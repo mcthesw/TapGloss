@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './lookup.css';
 
 :root,
 :host,
@@ -193,51 +194,6 @@ summary {
   max-height: 90vh;
   overflow: auto;
 }
-.lookup {
-  position: fixed;
-  width: 370px;
-  max-width: calc(100vw - 24px);
-  max-height: calc(100vh - 24px);
-  overflow: auto;
-  padding: 22px;
-  box-sizing: border-box;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: 0 12px 50px #00000030;
-  line-height: 1.6;
-  color: var(--text);
-  font-size: 15px;
-  z-index: 2147483647;
-}
-.lookup h2 {
-  margin: 0;
-  font-size: 23px;
-}
-.lookup .source {
-  margin-top: 16px;
-}
-.lookup .examples {
-  margin: 20px 0;
-}
-.lookup .label {
-  font-size: 11px;
-  letter-spacing: 1.4px;
-  color: var(--muted);
-  margin-bottom: 6px;
-}
-.lookup footer {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 18px;
-}
-.lookup button {
-  font-size: 13px;
-  padding: 6px 10px;
-}
-
 .record-footer {
   border-top: 1px solid var(--border);
 }
@@ -254,7 +210,8 @@ summary {
   height: 18px;
 }
 .record-compact {
-  padding: 14px 18px;
+  padding: 4px 8px;
+  border-radius: 7px;
 }
 .record-heading {
   display: flex;
@@ -266,11 +223,69 @@ summary {
   overflow-wrap: anywhere;
 }
 .record-details {
-  margin-top: 14px;
+  margin: 8px 4px 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
 }
-.record-details > summary {
-  width: fit-content;
+.record-compact .record-heading {
+  gap: 6px;
+  min-height: 30px;
 }
+.record-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 2px;
+  border: 0;
+  background: transparent;
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+}
+.record-toggle:hover {
+  background: transparent;
+}
+.record-toggle span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.record-toggle svg {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  color: var(--muted);
+}
+.record-toggle svg.expanded {
+  transform: rotate(90deg);
+}
+.record-compact .record-actions {
+  flex-shrink: 0;
+  gap: 3px;
+}
+.record-compact .record-actions button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  min-height: 26px;
+  padding: 4px;
+  border-radius: 5px;
+}
+.record-compact .record-actions svg {
+  width: 14px;
+  height: 14px;
+}
+.record-indicator {
+  font-size: 16px;
+}
+.record-compact .example {
+  font-size: 14px;
+  line-height: 1.65;
+}
+
 .record-actions button[aria-pressed='true'] {
   background: var(--mark);
   border-color: var(--accent);

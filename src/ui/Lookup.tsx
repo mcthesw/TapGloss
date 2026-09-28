@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { send } from '../messages';
 import { vocabularyId, type RecordView, type Source } from '../domain/model';
 import { Examples } from './Material';
@@ -18,6 +18,25 @@ export function Lookup({
 }) {
   const [record, setRecord] = useState<RecordView>();
   const [error, setError] = useState('');
+  const root = useRef<HTMLElement>(null);
+  const [position, setPosition] = useState({ left: 12, top: 12 });
+  useLayoutEffect(() => {
+    const place = () => {
+      const rect = root.current!.getBoundingClientRect();
+      const left = Math.max(12, Math.min(x, window.innerWidth - rect.width - 12));
+      const preferred = y + 12 + rect.height <= window.innerHeight - 12 ? y + 12 : y - rect.height - 12;
+      const top = Math.max(12, Math.min(preferred, window.innerHeight - rect.height - 12));
+      setPosition((old) => (old.left === left && old.top === top ? old : { left, top }));
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(root.current!);
+    window.addEventListener('resize', place);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', place);
+    };
+  }, [x, y]);
   useEffect(() => {
     let cancelled = false,
       timer: ReturnType<typeof setTimeout>;
@@ -61,37 +80,36 @@ export function Lookup({
   return (
     <section
       class="lookup"
+      ref={root}
       role="dialog"
       aria-label="语境查询"
-      style={{
-        left: Math.max(12, Math.min(x, window.innerWidth - 394)),
-        top: Math.max(12, Math.min(y + 12, window.innerHeight - 480)),
-      }}
+      style={position}
       onClick={(e) => e.stopPropagation()}
     >
-      <div class="flex items-start justify-between gap-3">
-        <h2>{material?.lemma ?? source.sentence.slice(source.start, source.end)}</h2>
-        <button class="quiet" aria-label="关闭" onClick={close}>
+      <header class="lookup-header">
+        <div class="lookup-term">
+          <h2>{material?.lemma ?? source.sentence.slice(source.start, source.end)}</h2>
+          {material?.gloss && <p class="lookup-gloss">{material.gloss}</p>}
+        </div>
+        <button class="quiet lookup-close" aria-label="关闭" onClick={close}>
           ✕
         </button>
+      </header>
+      <div class="lookup-body">
+        <div class="source">
+          <div class="label">原文</div>
+          {source.sentence.replace(/\s+/gu, ' ').trim()}
+        </div>
+        {material && <Examples material={material} numbered />}
       </div>
-      <div class="source">
-        <div class="label">原文</div>
-        {source.sentence}
-      </div>
-      {material && (
-        <>
-          <Examples material={material} />
-          {material.gloss && <p class="muted">{material.gloss}</p>}
-        </>
-      )}
-      <p class={error || record?.job?.error ? 'error' : 'muted'} role="status">
-        {status}
-      </p>
-      <footer>
+      <footer class={`lookup-footer ${error || record?.job?.error ? 'has-error' : ''}`}>
+        <p class={`lookup-status ${error || record?.job?.error ? 'error' : 'muted'}`} role="status">
+          {status}
+        </p>
         {record?.entry ? (
           <button
-            class="quiet"
+            class="lookup-known"
+            aria-pressed={record.state === 'known'}
             onClick={async () => {
               try {
                 await send({
@@ -114,12 +132,16 @@ export function Lookup({
           <span />
         )}
         <button
-          class="quiet"
+          class="quiet lookup-manage"
+          aria-label="记录与设置"
+          title="记录与设置"
           onClick={() => {
             void send({ type: 'open' });
           }}
         >
-          记录与设置 ↗
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <path d="M14 4h6v6M20 4l-9 9M10 5H5v15h15v-5" />
+          </svg>
         </button>
       </footer>
     </section>

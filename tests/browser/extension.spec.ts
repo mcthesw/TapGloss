@@ -283,13 +283,14 @@ test('records editor preserves Anki identity and deletion is opt-in', async () =
   await options.getByRole('button', { name: '紧凑', exact: true }).click();
   await expect(options.locator('.example').first()).not.toBeVisible();
   await expect(options.getByRole('button', { name: '恢复学习' })).toHaveAttribute('aria-pressed', 'true');
+  expect((await options.getByRole('article').boundingBox())!.height).toBeLessThanOrEqual(42);
   await options.screenshot({ path: 'test-results/records-compact-dark.png' });
   await options.reload();
   await expect(options.getByRole('button', { name: '紧凑', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
-  await options.getByText('详情', { exact: true }).click();
+  await options.getByRole('button', { name: /查看 .* 详情/ }).click();
   await expect(options.locator('.example').first()).toBeVisible();
   await options.getByRole('button', { name: '标准', exact: true }).click();
   await options.getByText('原文与来源', { exact: true }).click();

@@ -1,5 +1,6 @@
 import type { RecordView } from '../domain/model';
 import { Examples } from './Material';
+import { useId, useState } from 'preact/hooks';
 
 function Icon({ name }: { name: 'known' | 'edit' | 'delete' }) {
   const paths = {
@@ -41,6 +42,11 @@ export function Record({
   removeSource: (id: string) => void;
   retry: () => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const detailId = useId();
+  const term =
+    r.generation?.material.lemma ??
+    r.capture.source.sentence.slice(r.capture.source.start, r.capture.source.end);
   const actions = (
     <div class="record-actions">
       {r.entry && (
@@ -110,23 +116,47 @@ export function Record({
   return (
     <article class={`paper ${compact ? 'record-compact' : ''}`}>
       <div class={`record-heading ${compact ? '' : 'mb-4'}`}>
-        <h2>
-          {r.generation?.material.lemma ??
-            r.capture.source.sentence.slice(r.capture.source.start, r.capture.source.end)}
-        </h2>
+        {compact ? (
+          <button
+            class="record-toggle"
+            aria-label={`查看 ${term} 详情`}
+            aria-expanded={expanded}
+            aria-controls={detailId}
+            onClick={() => setExpanded(!expanded)}
+          >
+            <svg
+              class={expanded ? 'expanded' : ''}
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              aria-hidden="true"
+            >
+              <path d="m6 4 4 4-4 4" />
+            </svg>
+            <span title={term}>{term}</span>
+          </button>
+        ) : (
+          <h2>{term}</h2>
+        )}
+        {compact && r.job && (
+          <span
+            class={`record-indicator ${r.job.error ? 'error' : 'muted'}`}
+            role="status"
+            aria-label={status}
+            title={status}
+          >
+            •
+          </span>
+        )}
         {compact && actions}
       </div>
-      {compact ? (
-        <>
-          {r.job && <p class={r.job.error ? 'error mt-3' : 'muted mt-3'}>{status}</p>}
-          <details class="record-details">
-            <summary>详情</summary>
-            <div class="mt-4">{body}</div>
-          </details>
-        </>
-      ) : (
-        body
-      )}
+      {compact
+        ? expanded && (
+            <div class="record-details" id={detailId}>
+              {body}
+            </div>
+          )
+        : body}
     </article>
   );
 }

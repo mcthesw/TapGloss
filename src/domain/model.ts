@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { languageCodes } from './languages';
 
 const httpUrl = z.url().refine((s) => /^https?:\/\//.test(s), '请输入 HTTP 或 HTTPS 地址');
 export const settingsSchema = z.object({
@@ -11,6 +12,7 @@ export const settingsSchema = z.object({
   prompt: z.string().max(12000).default(''),
   theme: z.enum(['auto', 'light', 'dark']).default('auto'),
   gesture: z.enum(['click', 'alt']).default('click'),
+  excludedLanguages: z.array(z.enum(languageCodes)).max(languageCodes.length).default([]),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 export const sourceSchema = z

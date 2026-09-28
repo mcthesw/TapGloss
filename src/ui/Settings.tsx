@@ -5,6 +5,7 @@ import { send } from '../messages';
 import { AIConnection } from './AIConnection';
 import { Help } from './Help';
 import { Select } from './Select';
+import { ExcludedLanguages } from './ExcludedLanguages';
 
 export function Settings({
   initial,
@@ -95,7 +96,7 @@ export function Settings({
               <h2>阅读与外观</h2>
               <Help label="阅读与外观帮助">
                 选中词组或已认识的词后按 Alt + Q 查询。自动外观下弹窗跟随网页，记录页跟随系统，复习卡跟随
-                Anki。
+                Anki。 忽略语言不高亮、不响应普通点击；主动选中后仍可用 Alt + Q 查询。
               </Help>
             </div>
             <Select
@@ -116,6 +117,10 @@ export function Settings({
                 { value: 'dark', label: '深色' },
               ]}
               change={(theme) => change({ theme: theme as Configuration['theme'] })}
+            />
+            <ExcludedLanguages
+              value={value.excludedLanguages}
+              change={(excludedLanguages) => change({ excludedLanguages })}
             />
           </section>
           <section class="paper space-y-5">

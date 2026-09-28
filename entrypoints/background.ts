@@ -50,6 +50,7 @@ export default defineBackground(() => {
               words: await db.vocabulary.toArray(),
               gesture: s.gesture,
               theme: s.theme,
+              excludedLanguages: s.excludedLanguages,
               configured: !!s.apiKey || new URL(s.baseUrl).hostname !== 'api.deepseek.com',
             };
             break;

@@ -1,7 +1,8 @@
 import { normalize, type Vocabulary } from '../domain/model';
 import { textNodes } from './selection';
+import { languageFilter } from './languages';
 
-export function highlightPage(words: Vocabulary[]) {
+export function highlightPage(words: Vocabulary[], excludedLanguages: readonly string[] = []) {
   const css = CSS as typeof CSS & { highlights?: Map<string, unknown> };
   const HighlightType = (globalThis as unknown as { Highlight?: new (...ranges: Range[]) => unknown })
     .Highlight;
@@ -11,10 +12,12 @@ export function highlightPage(words: Vocabulary[]) {
   const fresh: Range[] = [],
     studying: Range[] = [];
   const segmenter = new Intl.Segmenter(undefined, { granularity: 'word' });
+  const excluded = languageFilter(excludedLanguages);
   for (const node of textNodes(document.body)) {
     if (!node.parentElement?.getClientRects().length) continue;
     for (const s of segmenter.segment(node.data)) {
       if (!s.isWordLike || known.has(normalize(s.segment)) || /^\p{N}+$/u.test(s.segment)) continue;
+      if (excluded(node, s.segment, s.index)) continue;
       const range = document.createRange();
       range.setStart(node, s.index);
       range.setEnd(node, s.index + s.segment.length);

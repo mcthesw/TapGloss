@@ -5,6 +5,8 @@ import { send } from '../src/messages';
 import { normalize } from '../src/domain/model';
 import { rangeAtPoint, sourceFromRange } from '../src/page/selection';
 import { highlightPage } from '../src/page/highlight';
+import { languageFilter } from '../src/page/languages';
+import { browser } from 'wxt/browser';
 import { applyTheme } from '../src/ui/theme';
 import { Lookup } from '../src/ui/Lookup';
 import '../src/ui/style.css';
@@ -51,10 +53,10 @@ export default defineContentScript({
       const next = await send({ type: 'vocabulary' });
       config = next;
       updateTheme();
-      const serialized = JSON.stringify(next.words);
+      const serialized = JSON.stringify([next.words, next.excludedLanguages]);
       if (serialized !== snapshot) {
         snapshot = serialized;
-        highlightPage(next.words);
+        highlightPage(next.words, next.excludedLanguages);
       }
     };
     const close = () => {
@@ -99,6 +101,14 @@ export default defineContentScript({
         config.words.some((w) => w.state === 'known' && w.forms.includes(normalize(range.toString())))
       )
         return;
+      if (
+        languageFilter(config.excludedLanguages)(
+          range.startContainer as Text,
+          range.toString(),
+          range.startOffset,
+        )
+      )
+        return;
       query(range, e.clientX, e.clientY);
     });
     ctx.addEventListener(document, 'keydown', (e) => {
@@ -116,15 +126,26 @@ export default defineContentScript({
       scheduled = true;
       ctx.setTimeout(() => {
         scheduled = false;
-        highlightPage(config.words);
+        highlightPage(config.words, config.excludedLanguages);
       }, 500);
     });
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['lang'],
+    });
     ctx.addEventListener(window, 'focus', () => {
       void refresh().catch(() => {});
     });
+    const settingsChanged = (changes: Record<string, unknown>, area: string) => {
+      if (area === 'local' && changes.settings) void refresh().catch(() => {});
+    };
+    browser.storage.onChanged.addListener(settingsChanged);
     ctx.onInvalidated(() => {
       observer.disconnect();
+      browser.storage.onChanged.removeListener(settingsChanged);
       themeObserver.disconnect();
       media.removeEventListener('change', updateTheme);
       style.remove();

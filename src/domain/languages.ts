@@ -1,0 +1,28 @@
+// TinyLD light's supported languages, expressed as ISO 639-1 codes.
+export const languageCodes = [
+  'ar',
+  'bn',
+  'de',
+  'el',
+  'en',
+  'es',
+  'fi',
+  'fr',
+  'he',
+  'hi',
+  'hu',
+  'it',
+  'ja',
+  'ko',
+  'nl',
+  'no',
+  'pl',
+  'pt',
+  'ro',
+  'ru',
+  'sv',
+  'th',
+  'tr',
+  'zh',
+] as const;
+export type LanguageCode = (typeof languageCodes)[number];

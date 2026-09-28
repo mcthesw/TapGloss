@@ -13,6 +13,13 @@ let failModels = false,
 test.describe.configure({ mode: 'serial' });
 test.beforeAll(async () => {
   server = createServer(async (req, res) => {
+    if (req.url === '/languages') {
+      res.setHeader('content-type', 'text/html; charset=utf-8');
+      res.end(
+        '<!doctype html><html lang="en"><body style="font:22px/2 system-ui;margin:60px"><p>这是一个用来<em id="chinese">阅读</em>的中文句子。</p><p>这篇文章解释了 <em id="english">repository</em> 的含义。</p><p lang="ja">これは<em id="japanese">漢字</em>を含む日本語です。</p></body></html>',
+      );
+      return;
+    }
     if (req.url === '/reading' || req.url === '/other') {
       res.setHeader('content-type', 'text/html; charset=utf-8');
       res.end(
@@ -324,5 +331,54 @@ test('content extraction keeps inline nodes and distinguishes repeated occurrenc
   await expect(popup.locator('.source')).toContainText('reluctant or reluctant?');
   await expect(popup.getByRole('status')).toContainText('未包含选中内容');
   expect(services.counts().adds).toBe(1);
+  await page.close();
+});
+
+test('language exclusions suppress native text while keeping mixed-language words and explicit lookup', async () => {
+  // Remove the deliberately invalid capture from the preceding test before changing settings.
+  await options.getByRole('button', { name: '记录', exact: true }).click();
+  await expect(options.getByRole('article')).toHaveCount(1);
+  await options.getByRole('button', { name: '删除', exact: true }).click();
+  await options.getByRole('button', { name: '确认删除' }).click();
+  await expect(options.getByRole('article')).toHaveCount(0);
+  const page = await context.newPage();
+  await page.goto(`${origin}/languages`);
+  await page.locator('tap-gloss').waitFor({ state: 'attached' });
+  const highlighted = (selector: string) =>
+    page.locator(selector).evaluate((el) => {
+      const css = CSS as typeof CSS & { highlights: Map<string, Set<Range>> };
+      return [...(css.highlights.get('tapgloss-new') ?? [])].some((range) =>
+        el.contains(range.startContainer),
+      );
+    });
+  await expect.poll(() => highlighted('#chinese')).toBe(true);
+  await options.getByRole('button', { name: '设置', exact: true }).click();
+  await options.getByLabel('忽略语言', { exact: true }).click();
+  await options.getByRole('option', { name: '中文', exact: true }).click();
+  await options.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(options.getByRole('button', { name: '保存', exact: true })).toHaveAttribute('title', '已保存');
+  await expect.poll(() => highlighted('#chinese')).toBe(false);
+  await expect.poll(() => highlighted('#english')).toBe(true);
+  await expect.poll(() => highlighted('#japanese')).toBe(true);
+  const before = services.counts().generations;
+  await page.locator('#chinese').click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(services.counts().generations).toBe(before);
+  await options.screenshot({ path: 'test-results/language-settings.png', fullPage: true });
+  await page.screenshot({ path: 'test-results/language-filter.png' });
+  await page.locator('#chinese').evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el.firstChild!);
+    getSelection()?.removeAllRanges();
+    getSelection()?.addRange(range);
+  });
+  await page.keyboard.press('Alt+q');
+  await expect(page.getByRole('dialog', { name: '语境查询' })).toBeVisible();
+  await expect.poll(() => services.counts().generations).toBe(before + 1);
+  await page.getByRole('button', { name: '关闭', exact: true }).click();
+  await page.evaluate(() => getSelection()?.removeAllRanges());
+  await options.getByRole('button', { name: '移除中文', exact: true }).click();
+  await options.getByRole('button', { name: '保存', exact: true }).click();
+  await expect.poll(() => highlighted('#chinese')).toBe(true);
   await page.close();
 });

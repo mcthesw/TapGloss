@@ -530,3 +530,17 @@ summary {
 .select-control input[readonly] {
   cursor: pointer;
 }
+.language-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.language-tags button {
+  padding: 4px 8px;
+  font-size: 13px;
+}
+.language-tags span {
+  margin-left: 6px;
+  color: var(--muted);
+}

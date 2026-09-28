@@ -38,6 +38,7 @@ type Results = {
     gesture: 'click' | 'alt';
     configured: boolean;
     theme: 'auto' | 'light' | 'dark';
+    excludedLanguages: string[];
   };
   list: { records: RecordView[]; jobs: Job[] };
   settings: z.infer<typeof settingsSchema>;

@@ -1,4 +1,5 @@
-import Dexie, { type EntityTable } from 'dexie';
+import Dexie, { type EntityTable, type Table } from 'dexie';
+import type { Wordlist, WordlistContent, WordlistWord } from '../domain/wordlists';
 import type { CatalogRow } from '../domain/records';
 import { buildCatalog, captureRow } from './catalog';
 import { track, upgradeSync, type PendingChange, type SyncShard, type SyncMeta } from './changes';
@@ -27,6 +28,9 @@ export class Database extends Dexie {
   syncChanges!: EntityTable<PendingChange, 'id'>;
   syncShards!: EntityTable<SyncShard, 'id'>;
   syncMeta!: EntityTable<SyncMeta, 'id'>;
+  wordlists!: EntityTable<Wordlist, 'id'>;
+  wordlistContents!: EntityTable<WordlistContent, 'id'>;
+  wordlistWords!: Table<WordlistWord, [string, string]>;
   constructor(name = 'TapGloss') {
     super(name);
     this.version(1).stores({
@@ -72,6 +76,11 @@ export class Database extends Dexie {
         syncMeta: 'id',
       })
       .upgrade(upgradeSync);
+    this.version(5).stores({
+      wordlists: 'id,createdAt',
+      wordlistContents: 'id',
+      wordlistWords: '[listId+term],listId,term',
+    });
   }
 }
 export function queue(db: Database, kind: Job['kind'], ref: string) {

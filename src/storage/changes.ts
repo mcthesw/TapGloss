@@ -1,6 +1,7 @@
 import type { Transaction } from 'dexie';
 
-export const sharedTables = ['captures', 'entries', 'generations', 'vocabulary'] as const;
+const readingTables = ['captures', 'entries', 'generations', 'vocabulary'] as const;
+export const sharedTables = [...readingTables, 'wordlists', 'wordlistContents'] as const;
 export type SharedTable = (typeof sharedTables)[number];
 export type PendingChange = {
   id: string;
@@ -63,7 +64,7 @@ export async function track(
 }
 
 export async function upgradeSync(tx: Transaction) {
-  for (const table of sharedTables) {
+  for (const table of readingTables) {
     let last = '';
     while (true) {
       const rows = await tx.table(table).where('id').above(last).limit(250).toArray();

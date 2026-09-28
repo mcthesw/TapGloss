@@ -46,7 +46,7 @@ export default defineContentScript({
       '::highlight(tapgloss-new){background-color:#88888820}::highlight(tapgloss-learning){background-color:#dcc46860}';
     document.head.append(style);
     const highlighter = createHighlighter(
-      (forms) => send({ type: 'vocabulary', data: forms }),
+      (forms) => send({ type: 'readingWords', data: forms }),
       config.excludedLanguages,
     );
     let lastExclusions = JSON.stringify(config.excludedLanguages);
@@ -98,7 +98,7 @@ export default defineContentScript({
       if (e.ctrlKey || e.metaKey || e.shiftKey || !getSelection()?.isCollapsed) return;
       const range = rangeAtPoint(e.clientX, e.clientY);
       if (!range || highlighter.ignored(range)) return;
-      if ((await highlighter.known(range)) || sequence !== clickSequence || !range.startContainer.isConnected)
+      if ((await highlighter.blocked(range)) || sequence !== clickSequence || !range.startContainer.isConnected)
         return;
       query(range, e.clientX, e.clientY);
     });

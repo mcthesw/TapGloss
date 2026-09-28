@@ -76,6 +76,7 @@ test.beforeAll(async () => {
   context = await chromium.launchPersistentContext('', {
     executablePath: process.env.TAPGLOSS_TEST_BROWSER,
     channel: 'chromium',
+    locale: 'zh-CN',
     headless: true,
     args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
   });
@@ -357,4 +358,42 @@ test('visible idle record page performs no periodic reads for 30 seconds', async
   });
   await options.waitForTimeout(30000);
   expect(await options.evaluate(() => (globalThis as unknown as { reads: number }).reads)).toBe(0);
+});
+
+test('wordlists have their own page and update reading reminders', async () => {
+  await options.getByRole('button', { name: '词表', exact: true }).click();
+  await expect(options.getByRole('button', { name: '导入词表', exact: true })).toBeVisible();
+  await options.getByLabel('选择词表文件').setInputFiles({
+    name: 'Common.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('word,frequency\nrain,10\noutside,20\nrain,5'),
+  });
+  const dialog = options.getByRole('dialog');
+  await expect(dialog).toContainText('2 个词语');
+  await expect(dialog).toContainText('已去重 1 项');
+  await options.screenshot({ path: 'test-results/wordlist-import.png', fullPage: true });
+  await dialog.getByRole('button', { name: '导入', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(options.getByRole('heading', { name: 'Common', exact: true })).toBeVisible();
+  const reading = await context.newPage();
+  await reading.goto(`${origin}/reading`);
+  const highlighted = () =>
+    reading.evaluate(() => {
+      const ranges = (CSS as typeof CSS & { highlights: Map<string, Set<Range>> }).highlights.get(
+        'tapgloss-new',
+      );
+      return [...(ranges ?? [])].map((r) => r.toString().toLowerCase());
+    });
+  await expect.poll(highlighted).toContain('garden');
+  expect(await highlighted()).not.toContain('rain');
+  await options.getByRole('button', { name: '✓ 已启用', exact: true }).click();
+  await expect.poll(highlighted).toContain('rain');
+  await options.getByRole('button', { name: '已停用', exact: true }).click();
+  await expect.poll(highlighted).not.toContain('rain');
+  await options.screenshot({ path: 'test-results/wordlists.png', fullPage: true });
+  await options.getByRole('button', { name: '移除词表 Common', exact: true }).click();
+  await options.getByRole('dialog').getByRole('button', { name: '移除', exact: true }).click();
+  await expect(options.getByRole('heading', { name: 'Common', exact: true })).toHaveCount(0);
+  await expect.poll(highlighted).toContain('rain');
+  await reading.close();
 });

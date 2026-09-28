@@ -1,4 +1,4 @@
-import type { Vocabulary } from '../domain/model';
+import type { ReadingWord } from '../domain/wordlists';
 import { normalize } from '../domain/model';
 import { eligible, textNodes } from './selection';
 import { languageFilter } from './languages';
@@ -6,7 +6,7 @@ import { languageFilter } from './languages';
 type RangeSet = Set<Range>;
 // Own only visible/nearby blocks. Page mutations invalidate those blocks, not the whole page.
 export function createHighlighter(
-  lookup: (forms: string[]) => Promise<Vocabulary[]>,
+  lookup: (forms: string[]) => Promise<ReadingWord[]>,
   exclusions: readonly string[],
 ) {
   const css = CSS as typeof CSS & { highlights?: Map<string, RangeSet> };
@@ -19,7 +19,7 @@ export function createHighlighter(
     visible = new Set<Element>(),
     pending = new Set<Element>();
   const ranges = new Map<Element, Range[]>(),
-    words = new Map<string, Vocabulary['state'] | undefined>();
+    words = new Map<string, ReadingWord>();
   let stopped = false,
     running = false,
     revision = 0,
@@ -42,12 +42,8 @@ export function createHighlighter(
         found = await lookup(batch);
       if (current !== revision || stopped) return;
       if (words.size > 5000) words.clear();
-      for (const form of batch) words.set(form, undefined);
-      for (const word of found)
-        for (const form of word.forms) {
-          if (batch.includes(form) && (words.get(form) !== 'known' || word.state === 'known'))
-            words.set(form, word.state);
-        }
+      for (const form of batch) words.set(form, { form, suppressed: false });
+      for (const word of found) words.set(word.form, word);
     }
   };
   const process = async () => {
@@ -72,13 +68,13 @@ export function createHighlighter(
         const ignore = languageFilter(excluded),
           next: Range[] = [];
         for (const s of segments) {
-          const state = words.get(normalize(s.segment));
-          if (state === 'known' || ignore(s.node, s.segment, s.index)) continue;
+          const word = words.get(normalize(s.segment));
+          if (word?.suppressed || ignore(s.node, s.segment, s.index)) continue;
           if (s.index + s.segment.length > s.node.length) continue;
           const range = document.createRange();
           range.setStart(s.node, s.index);
           range.setEnd(s.node, s.index + s.segment.length);
-          (state === 'learning' ? learning : fresh).add(range);
+          (word?.state === 'learning' ? learning : fresh).add(range);
           next.push(range);
         }
         ranges.set(block, next);
@@ -174,10 +170,10 @@ export function createHighlighter(
   document.addEventListener('visibilitychange', shown);
   return {
     refresh,
-    async known(range: Range) {
+    async blocked(range: Range) {
       const form = normalize(range.toString());
       await fetchWords([form]);
-      return words.get(form) === 'known';
+      return words.get(form)?.suppressed ?? false;
     },
     ignored(range: Range) {
       return languageFilter(excluded)(range.startContainer as Text, range.toString(), range.startOffset);

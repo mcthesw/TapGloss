@@ -5,6 +5,7 @@ import { pageSize, type RecordPage } from '../domain/records';
 import { Settings } from './Settings';
 import { RecordDetail } from './RecordDetail';
 import { applyTheme } from './theme';
+import { Wordlists } from './Wordlists';
 
 export function App() {
   const [actionHost, setActionHost] = useState<HTMLDivElement | null>(null);
@@ -20,12 +21,18 @@ export function App() {
     [busy, setBusy] = useState(false);
   const [deletions, setDeletions] = useState<Job[]>([]);
   const searchInput = useRef<HTMLInputElement>(null);
+  const userNavigated = useRef(false);
+  const selectTab = (next: string) => {
+    userNavigated.current = true;
+    setTab(next);
+  };
   const cursors = useRef(new Map<number, [number, string]>());
   useEffect(() => {
     void send({ type: 'settings' })
       .then((s) => {
         setConfig(s);
-        if (!s.apiKey && new URL(s.baseUrl).hostname === 'api.deepseek.com') setTab('settings');
+        if (!userNavigated.current && !s.apiKey && new URL(s.baseUrl).hostname === 'api.deepseek.com')
+          setTab('settings');
       })
       .catch(() => setError('无法读取设置，请重新打开扩展'));
   }, []);
@@ -93,20 +100,32 @@ export function App() {
       <header class="app-header">
         <div>
           <h1 class="brand">TapGloss.</h1>
-          <p class="muted mt-1">点一下，理解语境，记住表达。</p>
+          <p class="muted mt-1">{'点一下，理解语境，记住表达。'}</p>
         </div>
         <div class="header-controls">
-          <nav class="page-nav" aria-label="页面">
-            <button aria-current={tab === 'records' ? 'page' : undefined} onClick={() => setTab('records')}>
-              记录
+          <nav class="page-nav" aria-label={'页面'}>
+            <button
+              aria-current={tab === 'records' ? 'page' : undefined}
+              onClick={() => selectTab('records')}
+            >
+              {'记录'}{' '}
             </button>
-            <button aria-current={tab === 'settings' ? 'page' : undefined} onClick={() => setTab('settings')}>
-              设置
+            <button
+              aria-current={tab === 'wordlists' ? 'page' : undefined}
+              onClick={() => selectTab('wordlists')}
+            >
+              {'词表'}{' '}
+            </button>
+            <button
+              aria-current={tab === 'settings' ? 'page' : undefined}
+              onClick={() => selectTab('settings')}
+            >
+              {'设置'}{' '}
             </button>
           </nav>
           <div class="page-actions" ref={setActionHost}>
             {tab === 'records' && (
-              <div class="view-switch" role="group" aria-label="记录大小">
+              <div class="view-switch" role="group" aria-label={'记录大小'}>
                 {['standard', 'compact'].map((mode) => (
                   <button
                     key={mode}
@@ -145,8 +164,8 @@ export function App() {
             ref={searchInput}
             maxLength={200}
             class="mb-6"
-            aria-label="搜索记录"
-            placeholder="搜索词语或原句…"
+            aria-label={'搜索记录'}
+            placeholder={'搜索词语或原句…'}
             value={search}
             onInput={(e) => setSearch(e.currentTarget.value)}
           />
@@ -160,7 +179,7 @@ export function App() {
                     void send({ type: 'retry', data: job.id }).catch((e: Error) => setError(e.message))
                   }
                 >
-                  重试删除
+                  {'重试删除'}{' '}
                 </button>
               )}
             </div>
@@ -168,7 +187,7 @@ export function App() {
           {!page.records.length && (
             <section class="empty-records">
               <h2>{busy ? '读取中…' : query ? '没有匹配的记录' : '从一个想了解的词开始'}</h2>
-              {!query && !busy && <p class="muted">在网页上点选词语，语境和例句就会留在这里。</p>}
+              {!query && !busy && <p class="muted">{'在网页上点选词语，语境和例句就会留在这里。'}</p>}
             </section>
           )}
           <div class={compact ? 'word-list' : 'summary-list'} aria-busy={busy}>
@@ -181,12 +200,12 @@ export function App() {
               >
                 <span class="word-title">{r.term}</span>
                 {r.state === 'known' && (
-                  <span class="word-state" title="已认识" aria-label="已认识">
+                  <span class="word-state" title={'已认识'} aria-label={'已认识'}>
                     ✓
                   </span>
                 )}
                 {r.job?.error && (
-                  <span class="error" title={r.job.error} aria-label="需要处理">
+                  <span class="error" title={r.job.error} aria-label={'需要处理'}>
                     •
                   </span>
                 )}
@@ -204,21 +223,22 @@ export function App() {
             ))}
           </div>
           {(offset > 0 || page.next !== undefined) && (
-            <nav class="pagination" aria-label="记录分页">
+            <nav class="pagination" aria-label={'记录分页'}>
               <button disabled={busy || !offset} onClick={() => navigate(Math.max(0, offset - pageSize))}>
-                上一页
+                {'上一页'}{' '}
               </button>
               <span class="muted">
                 {offset + 1}–{offset + page.records.length}
               </span>
               <button disabled={busy || page.next === undefined} onClick={() => navigate(page.next!)}>
-                下一页
+                {'下一页'}{' '}
               </button>
             </nav>
           )}
         </>
       )}
       {selected && <RecordDetail key={selected} id={selected} close={() => setSelected(undefined)} />}
+      {tab === 'wordlists' && <Wordlists actions={actionHost} />}
     </main>
   );
 }

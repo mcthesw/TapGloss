@@ -4,6 +4,8 @@ import { captureRow, entryRow } from '../storage/catalog';
 import type { Capture, Entry } from '../domain/model';
 import { materialize, type SharedRecord } from './document';
 import { sharedTables } from '../storage/changes';
+import { indexWordlist, clearWordlistIndex } from '../storage/wordlists';
+import type { Wordlist, WordlistContent } from '../domain/wordlists';
 
 function same(before: Record<string, unknown> | undefined, after: object) {
   if (!before) return false;
@@ -34,6 +36,15 @@ export async function project(db: Database, rows: SharedRecord[]) {
     });
     if (!values.length) continue;
     await db.table(name).bulkPut(values);
+    if (name === 'wordlists')
+      for (const list of values as Wordlist[]) {
+        if (list.deleted) await clearWordlistIndex(db, list.id);
+      }
+    if (name === 'wordlistContents')
+      for (const content of values as WordlistContent[]) {
+        if (!(await db.wordlists.get(content.id))?.deleted)
+          await indexWordlist(db, content.id, content.terms);
+      }
     if (name === 'entries') for (const e of values) affected.add(e.id);
     if (name === 'captures') {
       const captures = values as Capture[];

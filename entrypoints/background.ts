@@ -9,6 +9,7 @@ import { Anki } from '../src/anki/client';
 import { listRecords, recordDetail } from '../src/storage/catalog';
 import { editMaterial, removeSource } from '../src/storage/mutations';
 import { SyncService, testRemote } from '../src/sync/service';
+import { importWordlist, changeWordlist, readingWords } from '../src/storage/wordlists';
 
 export default defineBackground(() => {
   const db = new Database();
@@ -60,7 +61,7 @@ export default defineBackground(() => {
       }));
   const sync = new SyncService(db, async () => (await settings()).sync, {
     changed: () => notify({ sync: true }),
-    recordsChanged: () => notify({ records: true, vocabulary: true }),
+    recordsChanged: () => notify({ records: true, vocabulary: true, wordlists: true }),
     jobs: () => {
       void wake();
     },
@@ -93,7 +94,9 @@ export default defineBackground(() => {
       const trusted = sender.url?.startsWith(browser.runtime.getURL('/'));
       if (
         !trusted &&
-        !['lookup', 'read', 'vocabulary', 'readingSettings', 'state', 'open'].includes(request.type)
+        !['lookup', 'read', 'vocabulary', 'readingWords', 'readingSettings', 'state', 'open'].includes(
+          request.type,
+        )
       )
         throw new Error('此操作只能在扩展页面中进行');
       let data: unknown;
@@ -141,6 +144,26 @@ export default defineBackground(() => {
         case 'settings':
           data = await settings();
           break;
+        case 'readingWords':
+          data = await readingWords(db, request.data);
+          break;
+        case 'wordlists':
+          data = await db.wordlists
+            .orderBy('createdAt')
+            .reverse()
+            .filter((l) => !l.deleted)
+            .toArray();
+          break;
+        case 'importWordlist':
+          data = await importWordlist(db, request.data);
+          change = { wordlists: true, vocabulary: true };
+          break;
+        case 'changeWordlist': {
+          const { id, remove, ...patch } = request.data;
+          await changeWordlist(db, id, patch, remove);
+          change = { wordlists: true, vocabulary: true };
+          break;
+        }
         case 'syncStatus':
           data = await sync.status();
           break;

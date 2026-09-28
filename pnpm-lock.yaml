@@ -19,6 +19,9 @@ importers:
       dexie:
         specifier: ^4.4.6
         version: 4.4.6
+      papaparse:
+        specifier: ^5.7.0
+        version: 5.7.0
       preact:
         specifier: ^10.29.8
         version: 10.29.8
@@ -50,6 +53,9 @@ importers:
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.0
+      '@types/papaparse':
+        specifier: ^5.5.2
+        version: 5.5.2
       '@types/s3rver':
         specifier: ^3.7.4
         version: 3.7.4

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { materialSchema, sourceSchema } from '../domain/model';
 import { deleted } from '../domain/sync';
 import { shardFor, type PendingChange, type SharedTable } from '../storage/changes';
+import { wordlistMode } from '../domain/wordlists';
 
 export class SyncDataError extends Error {}
 
@@ -12,6 +13,16 @@ const lifecycle = {
   acknowledged: z.array(id).max(10000).optional(),
 };
 const schemas = {
+  wordlists: z.strictObject({
+    id,
+    name: z.string().min(1).max(120),
+    mode: wordlistMode,
+    enabled: z.boolean(),
+    count: z.int().nonnegative().max(100000),
+    createdAt: z.number().nonnegative(),
+    ...lifecycle,
+  }),
+  wordlistContents: z.strictObject({ id, terms: z.array(z.string().min(1).max(150)).max(100000) }),
   captures: z.strictObject({
     id,
     source: sourceSchema,
@@ -110,7 +121,7 @@ export function records(doc: Y.Doc, shard: string): SharedRecord[] {
 }
 
 export function materialize(row: SharedRecord) {
-  return row.table === 'entries' || row.table === 'captures'
+  return row.table === 'entries' || row.table === 'captures' || row.table === 'wordlists'
     ? { ...row.value, deleted: deleted(row.value) || undefined }
     : row.value;
 }

@@ -1,6 +1,40 @@
 @import 'tailwindcss';
 @import './lookup.css';
 
+.wordlist-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 16px;
+}
+.wordlist-card {
+  display: grid;
+  gap: 20px;
+  align-content: start;
+}
+.wordlist-card > button {
+  justify-self: start;
+}
+.wordlist-card h2 {
+  overflow-wrap: anywhere;
+}
+.wordlist-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  font-size: 14px;
+}
+
+.sync-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 480px) {
+  .sync-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 :root,
 :host,
 [data-theme='light'] {
@@ -554,15 +588,4 @@ summary {
 .language-tags span {
   margin-left: 6px;
   color: var(--muted);
-}
-
-.sync-fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-@media (max-width: 480px) {
-  .sync-fields {
-    grid-template-columns: 1fr;
-  }
 }

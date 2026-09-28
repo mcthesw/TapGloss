@@ -10,12 +10,25 @@ import {
 } from './domain/model';
 import type { RecordDetail, RecordPage } from './domain/records';
 import { syncSettingsSchema, type SyncStatus } from './domain/sync';
+import { wordlistImport, wordlistMode, type Wordlist, type ReadingWord } from './domain/wordlists';
 
 export const requestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('lookup'), data: sourceSchema }),
   z.object({ type: z.literal('read'), data: z.string().max(100) }),
   z.object({ type: z.literal('vocabulary'), data: z.array(z.string().max(200)).max(1000).default([]) }),
   z.object({ type: z.literal('readingSettings') }),
+  z.object({ type: z.literal('readingWords'), data: z.array(z.string().max(200)).max(1000) }),
+  z.object({ type: z.literal('wordlists') }),
+  z.object({ type: z.literal('importWordlist'), data: wordlistImport }),
+  z.object({
+    type: z.literal('changeWordlist'),
+    data: z.object({
+      id: z.string().max(100),
+      enabled: z.boolean().optional(),
+      mode: wordlistMode.optional(),
+      remove: z.boolean().default(false),
+    }),
+  }),
   z.object({
     type: z.literal('list'),
     data: z
@@ -58,6 +71,10 @@ type Results = {
   lookup: string;
   read: RecordView | undefined;
   vocabulary: Vocabulary[];
+  readingWords: ReadingWord[];
+  wordlists: Wordlist[];
+  importWordlist: string;
+  changeWordlist: void;
   readingSettings: {
     gesture: 'click' | 'alt';
     configured: boolean;
@@ -123,6 +140,7 @@ export type Change = {
   vocabulary?: boolean;
   settings?: boolean;
   sync?: boolean;
+  wordlists?: boolean;
   initial?: boolean;
   revision?: string;
 };

@@ -555,3 +555,14 @@ summary {
   margin-left: 6px;
   color: var(--muted);
 }
+
+.sync-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 480px) {
+  .sync-fields {
+    grid-template-columns: 1fr;
+  }
+}

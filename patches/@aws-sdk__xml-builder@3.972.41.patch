@@ -1,0 +1,14 @@
+diff --git a/package.json b/package.json
+index 39d0c86f6f738b9f25c2255307bdc9e72b731d87..3e46c0f32cb21d88a8657e6dec8d5e4615ec9e17 100644
+--- a/package.json
++++ b/package.json
+@@ -19,9 +19,6 @@
+   "sideEffects": false,
+   "main": "./dist-cjs/index.js",
+   "module": "./dist-es/index.js",
+-  "browser": {
+-    "./dist-es/xml-parser": "./dist-es/xml-parser.browser"
+-  },
+   "types": "./dist-types/index.d.ts",
+   "typesVersions": {
+     "<4.5": {

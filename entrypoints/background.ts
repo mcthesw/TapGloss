@@ -8,6 +8,7 @@ import { availableModels, explain } from '../src/explain/client';
 import { Anki } from '../src/anki/client';
 import { listRecords, recordDetail } from '../src/storage/catalog';
 import { editMaterial, removeSource } from '../src/storage/mutations';
+import { SyncService, testRemote } from '../src/sync/service';
 
 export default defineBackground(() => {
   const db = new Database();
@@ -57,8 +58,22 @@ export default defineBackground(() => {
       .finally(() => {
         waking = undefined;
       }));
+  const sync = new SyncService(db, async () => (await settings()).sync, {
+    changed: () => notify({ sync: true }),
+    recordsChanged: () => notify({ records: true, vocabulary: true }),
+    jobs: () => {
+      void wake();
+    },
+    schedule: async (when, preserve) => {
+      if (when && preserve && (await browser.alarms.get('sync'))) return;
+      if (when) await browser.alarms.create('sync', { when });
+      else await browser.alarms.clear('sync');
+    },
+  });
+  const syncReady = sync.initialize();
   browser.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === 'work') void wake();
+    if (alarm.name === 'sync') void syncReady.then(() => sync.run()).catch(() => {});
   });
   browser.runtime.onStartup.addListener(() => {
     void wake();
@@ -126,10 +141,22 @@ export default defineBackground(() => {
         case 'settings':
           data = await settings();
           break;
+        case 'syncStatus':
+          data = await sync.status();
+          break;
+        case 'syncNow':
+          await syncReady;
+          data = await sync.run();
+          break;
+        case 'testSync':
+          await testRemote(request.data, signal);
+          break;
         case 'saveSettings': {
           const before = await settings();
           if (JSON.stringify(before) !== JSON.stringify(request.data)) {
             await browser.storage.local.set({ settings: request.data });
+            await syncReady;
+            await sync.configure(request.data.sync);
             change = { settings: true };
           }
           break;
@@ -231,4 +258,5 @@ export default defineBackground(() => {
     } else port.disconnect();
   });
   void wake();
+  void syncReady.catch(() => {});
 });

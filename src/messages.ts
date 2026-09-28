@@ -9,6 +9,7 @@ import {
   type Job,
 } from './domain/model';
 import type { RecordDetail, RecordPage } from './domain/records';
+import { syncSettingsSchema, type SyncStatus } from './domain/sync';
 
 export const requestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('lookup'), data: sourceSchema }),
@@ -32,6 +33,9 @@ export const requestSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('pendingDeletes') }),
   z.object({ type: z.literal('settings') }),
+  z.object({ type: z.literal('syncStatus') }),
+  z.object({ type: z.literal('syncNow') }),
+  z.object({ type: z.literal('testSync'), data: syncSettingsSchema }),
   z.object({ type: z.literal('open') }),
   z.object({ type: z.literal('saveSettings'), data: settingsSchema }),
   z.object({ type: z.literal('models'), data: settingsSchema.pick({ baseUrl: true, apiKey: true }) }),
@@ -64,6 +68,9 @@ type Results = {
   detail: RecordDetail | undefined;
   pendingDeletes: Job[];
   settings: z.infer<typeof settingsSchema>;
+  syncStatus: SyncStatus;
+  syncNow: SyncStatus;
+  testSync: void;
   saveSettings: void;
   models: string[];
   testModel: { elapsedMs: number };
@@ -115,6 +122,7 @@ export type Change = {
   records?: boolean;
   vocabulary?: boolean;
   settings?: boolean;
+  sync?: boolean;
   initial?: boolean;
   revision?: string;
 };

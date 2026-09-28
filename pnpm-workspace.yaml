@@ -1,0 +1,2 @@
+patchedDependencies:
+  '@aws-sdk/xml-builder@3.972.41': patches/@aws-sdk__xml-builder@3.972.41.patch

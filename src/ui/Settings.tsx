@@ -1,3 +1,4 @@
+import { SyncSettings } from './SyncSettings';
 import { createPortal } from 'preact/compat';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { settingsSchema, type Settings as Configuration } from '../domain/model';
@@ -103,6 +104,12 @@ export function Settings({
       <div class="settings-columns">
         <div class="settings-column">
           <AIConnection value={value} change={change} active={active} />
+          <SyncSettings
+            value={value.sync}
+            saved={initial.sync}
+            change={(sync) => change({ sync })}
+            active={active}
+          />
         </div>
         <div class="settings-column">
           <section class="paper space-y-5">

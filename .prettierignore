@@ -3,4 +3,4 @@ node_modules
 .wxt
 test-results
 playwright-report
-package-lock.json
+pnpm-lock.yaml

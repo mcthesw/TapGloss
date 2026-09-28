@@ -4,12 +4,13 @@
 
 ## 安装与使用
 
-需要 Node.js 24 和 npm。构建扩展：
+需要 Node.js 24 和 pnpm（版本由 `packageManager` 固定）。构建扩展：
 
 ```sh
-npm ci
-npm run build
-npm run build:firefox
+corepack enable pnpm
+pnpm install --frozen-lockfile
+pnpm run build
+pnpm run build:firefox
 ```
 
 - Chrome / Chromium：在扩展管理页打开开发者模式，选择“加载已解压的扩展程序”，加载 `.output/chrome-mv3`。
@@ -37,21 +38,21 @@ Anki 未启动时先保存本地材料，后台会重试。在记录页可以搜
 ## 开发
 
 ```sh
-npm run dev
-npm run check
-npm run lint
-npm run format:check
-npm test
-npx playwright install chromium
-npm run build
-npm run test:e2e
+pnpm run dev
+pnpm run check
+pnpm run lint
+pnpm run format:check
+pnpm test
+pnpm exec playwright install chromium
+pnpm run build
+pnpm run test:e2e
 ```
 
-`npm run dev:firefox` 启动 Firefox 开发模式。`npm run zip` 与 `npm run zip:firefox` 在 `.output` 生成分发压缩包。
+`pnpm run dev:firefox` 启动 Firefox 开发模式。`pnpm run zip` 与 `pnpm run zip:firefox` 在 `.output` 生成分发压缩包。
 
 浏览器测试使用独立临时配置和本机模拟服务，不操作日常浏览器或私人 Anki 数据。可以用 `TAPGLOSS_TEST_BROWSER` 指定已有 Chromium 可执行文件。
 
-真实集成测试默认跳过。临时设置 `TAPGLOSS_LIVE_API_KEY` 可以验证模型连接，可选 `TAPGLOSS_LIVE_BASE_URL` 与 `TAPGLOSS_LIVE_MODEL`。设置 `TAPGLOSS_LIVE_ANKI=1` 会在正在运行的 Anki 中创建测试笔记并在结束时删除该测试笔记，专用牌组和笔记类型保留。运行 `npx vitest run tests/live.test.ts`；不要把真实凭据写入文件或提交。
+真实集成测试默认跳过。临时设置 `TAPGLOSS_LIVE_API_KEY` 可以验证模型连接，可选 `TAPGLOSS_LIVE_BASE_URL` 与 `TAPGLOSS_LIVE_MODEL`。设置 `TAPGLOSS_LIVE_ANKI=1` 会在正在运行的 Anki 中创建测试笔记并在结束时删除该测试笔记，专用牌组和笔记类型保留。运行 `pnpm exec vitest run tests/live.test.ts`；不要把真实凭据写入文件或提交。
 
 ## 代码边界
 

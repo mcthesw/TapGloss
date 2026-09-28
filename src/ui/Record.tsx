@@ -114,7 +114,7 @@ export function Record({
     </>
   );
   return (
-    <article class={`paper ${compact ? 'record-compact' : ''}`}>
+    <article class={compact ? `record-compact ${expanded ? 'is-expanded' : ''}` : 'paper'}>
       <div class={`record-heading ${compact ? '' : 'mb-4'}`}>
         {compact ? (
           <button

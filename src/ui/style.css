@@ -209,9 +209,27 @@ summary {
   width: 18px;
   height: 18px;
 }
+.compact-records {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 16px;
+}
 .record-compact {
-  padding: 4px 8px;
-  border-radius: 7px;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.record-compact:hover,
+.record-compact:focus-within {
+  background: var(--hover);
+}
+.record-compact.is-expanded {
+  width: 420px;
+  background: var(--surface);
+  padding: 8px 12px;
 }
 .record-heading {
   display: flex;
@@ -230,6 +248,8 @@ summary {
 .record-compact .record-heading {
   gap: 6px;
   min-height: 30px;
+  width: max-content;
+  max-width: 100%;
 }
 .record-toggle {
   display: flex;
@@ -273,6 +293,11 @@ summary {
   min-height: 26px;
   padding: 4px;
   border-radius: 5px;
+  border: 0;
+  background: transparent;
+}
+.record-compact .record-actions button:hover {
+  background: var(--mark);
 }
 .record-compact .record-actions svg {
   width: 14px;

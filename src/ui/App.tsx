@@ -136,7 +136,7 @@ export function App() {
               <p class="muted">在网页上点选词语，语境和例句就会留在这里。</p>
             </section>
           )}
-          <div class={compact ? 'space-y-2' : 'space-y-5'}>
+          <div class={compact ? 'compact-records' : 'space-y-5'}>
             {visible.map((r) => (
               <Record
                 key={`${r.entry?.id ?? r.capture.id}:${compact}`}

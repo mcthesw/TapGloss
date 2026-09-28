@@ -1,4 +1,4 @@
-import { render } from 'preact';
+import { render, type VNode } from 'preact';
 import { defineContentScript } from 'wxt/utils/define-content-script';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { send, subscribeChanges } from '../src/messages';
@@ -6,6 +6,7 @@ import { rangeAtPoint, sourceFromRange } from '../src/page/selection';
 import { createHighlighter } from '../src/page/highlight';
 import { applyTheme } from '../src/ui/theme';
 import { Lookup } from '../src/ui/Lookup';
+import { LocaleContext, resolveLocale } from '../src/ui/i18n';
 import '../src/ui/style.css';
 
 export default defineContentScript({
@@ -31,6 +32,14 @@ export default defineContentScript({
     });
     ui.mount();
     let readingSurface: Element = document.body;
+    let lookupView: VNode | undefined;
+    const renderLookup = () =>
+      render(
+        <LocaleContext.Provider value={resolveLocale(config.interfaceLanguage)}>
+          {lookupView}
+        </LocaleContext.Provider>,
+        container,
+      );
     const updateTheme = () => applyTheme(ui.shadowHost, config.theme, readingSurface);
     const media = matchMedia('(prefers-color-scheme: dark)');
     media.addEventListener('change', updateTheme);
@@ -52,6 +61,7 @@ export default defineContentScript({
     let lastExclusions = JSON.stringify(config.excludedLanguages);
     const refreshSettings = async () => {
       config = await send({ type: 'readingSettings' });
+      if (opened) renderLookup();
       updateTheme();
       const next = JSON.stringify(config.excludedLanguages);
       if (next !== lastExclusions) {
@@ -66,6 +76,7 @@ export default defineContentScript({
     const close = () => {
       clickSequence++;
       render(null, container);
+      lookupView = undefined;
       opened = false;
     };
     const query = (range: Range, x: number, y: number) => {
@@ -79,16 +90,16 @@ export default defineContentScript({
       readingSurface = range.startContainer.parentElement ?? document.body;
       updateTheme();
       opened = true;
-      render(
+      lookupView = (
         <Lookup
           key={`${source.location}:${source.start}:${Date.now()}`}
           source={source}
           x={x}
           y={y}
           close={close}
-        />,
-        container,
+        />
       );
+      renderLookup();
     };
     ctx.addEventListener(document, 'click', async (e) => {
       if (!e.isTrusted || e.button !== 0 || e.composedPath().includes(ui.shadowHost)) return;
@@ -98,7 +109,11 @@ export default defineContentScript({
       if (e.ctrlKey || e.metaKey || e.shiftKey || !getSelection()?.isCollapsed) return;
       const range = rangeAtPoint(e.clientX, e.clientY);
       if (!range || highlighter.ignored(range)) return;
-      if ((await highlighter.blocked(range)) || sequence !== clickSequence || !range.startContainer.isConnected)
+      if (
+        (await highlighter.blocked(range)) ||
+        sequence !== clickSequence ||
+        !range.startContainer.isConnected
+      )
         return;
       query(range, e.clientX, e.clientY);
     });

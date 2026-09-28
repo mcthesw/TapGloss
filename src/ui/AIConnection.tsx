@@ -1,3 +1,4 @@
+import { useI18n } from './i18n';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Settings } from '../domain/model';
 import { send } from '../messages';
@@ -14,6 +15,7 @@ export function AIConnection({
   active?: boolean;
   change: (patch: Partial<Settings>) => void;
 }) {
+  const t = useI18n();
   const [models, setModels] = useState<string[]>([]);
   const [promptText, setPromptText] = useState(value.prompt || defaultPrompt);
   const discovery = useRef<AbortController>();
@@ -38,10 +40,12 @@ export function AIConnection({
       const found = await send({ type: 'models', data: requested }, controller.signal);
       if (id !== sequence.current) return;
       setModels(found);
-      setModelNotice(found.length ? `已获取 ${found.length} 个模型` : '未找到模型，可以手动填写名称。');
+      setModelNotice(
+        found.length ? t('已获取 {0} 个模型', found.length) : t('未找到模型，可以手动填写名称。'),
+      );
     } catch (error) {
       if (id === sequence.current)
-        setModelNotice(error instanceof Error ? error.message : '获取失败，可手动填写模型。');
+        setModelNotice(error instanceof Error ? error.message : t('获取失败，可手动填写模型。'));
     } finally {
       if (id === sequence.current) setLoading(false);
     }
@@ -80,11 +84,13 @@ export function AIConnection({
   return (
     <section class="paper space-y-5 ai-settings">
       <div class="settings-heading">
-        <h2>AI 连接</h2>
-        <Help label="AI 连接帮助">支持 OpenAI 兼容接口。测试连接会生成一组例句，不保存记录或制卡。</Help>
+        <h2>{t('AI 连接')}</h2>
+        <Help label={t('AI 连接帮助')}>
+          {t('支持 OpenAI 兼容接口。测试连接会生成一组例句，不保存记录或制卡。')}
+        </Help>
       </div>
       <label>
-        API 地址
+        {t('API 地址')}{' '}
         <input
           type="url"
           required
@@ -100,11 +106,11 @@ export function AIConnection({
           autoComplete="off"
           value={value.apiKey}
           onInput={(e) => change({ apiKey: e.currentTarget.value })}
-          placeholder="密钥仅保存在此浏览器"
+          placeholder={t('密钥仅保存在此浏览器')}
         />
       </label>
       <Select
-        label="模型"
+        label={t('模型')}
         editable
         value={value.model}
         options={models.map((model) => ({ value: model, label: model }))}
@@ -114,7 +120,7 @@ export function AIConnection({
       />
       <div class="connection-actions">
         <button type="button" disabled={loading} onClick={() => void fetchModels()}>
-          {loading ? '正在获取…' : '获取模型'}
+          {loading ? t('正在获取…') : t('获取模型')}
         </button>
         <button
           type="button"
@@ -129,32 +135,32 @@ export function AIConnection({
             try {
               const result = await send({ type: 'testModel', data: value }, controller.signal);
               if (id === testSequence.current)
-                setTestNotice(`连接正常 · 例句生成通过（${(result.elapsedMs / 1000).toFixed(1)} 秒）`);
+                setTestNotice(t('连接正常 · 例句生成通过（{0} 秒）', (result.elapsedMs / 1000).toFixed(1)));
             } catch (error) {
               if (id === testSequence.current)
-                setTestNotice(error instanceof Error ? error.message : '测试失败，请检查连接。');
+                setTestNotice(error instanceof Error ? error.message : t('测试失败，请检查连接。'));
             } finally {
               if (id === testSequence.current) setTesting(false);
             }
           }}
         >
-          {testing ? '正在测试…' : '测试连接'}
+          {testing ? t('正在测试…') : t('测试连接')}
         </button>
       </div>
       {modelNotice && (
         <p class="muted" aria-live="polite">
-          {modelNotice}
+          {t(modelNotice)}
         </p>
       )}
       {testNotice && (
         <p class="notice" role="status">
-          {testNotice}
+          {t(testNotice)}
         </p>
       )}
       <details>
-        <summary>生成提示词</summary>
+        <summary>{t('生成提示词')}</summary>
         <label class="mt-4">
-          提示词
+          {t('提示词')}{' '}
           <textarea
             class="prompt-input"
             maxLength={12000}
@@ -172,7 +178,7 @@ export function AIConnection({
             change({ prompt: '' });
           }}
         >
-          恢复默认提示词
+          {t('恢复默认提示词')}{' '}
         </button>
       </details>
     </section>

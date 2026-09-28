@@ -17,6 +17,7 @@ const profile = await mkdtemp(join(tmpdir(), 'tapgloss-benchmark-'));
 const browserOptions = {
   executablePath: process.env.TAPGLOSS_TEST_BROWSER,
   channel: 'chromium',
+  locale: 'zh-CN',
   headless: true,
   colorScheme: 'dark',
   viewport: { width: 1440, height: 900 },

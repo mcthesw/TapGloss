@@ -1,3 +1,4 @@
+import { useI18n } from './i18n';
 import { createPortal } from 'preact/compat';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { send, subscribeChanges } from '../messages';
@@ -12,6 +13,7 @@ const modes = [
   { value: 'include', label: '只提醒表内词' },
 ];
 export function Wordlists({ actions }: { actions: HTMLElement | null }) {
+  const t = useI18n();
   const [lists, setLists] = useState<Wordlist[]>([]),
     [error, setError] = useState('');
   const [preview, setPreview] = useState<{ name: string; terms: string[]; duplicates: number }>();
@@ -40,7 +42,7 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
     try {
       await action();
     } catch (e) {
-      setError(e instanceof Error ? e.message : '操作未完成');
+      setError(e instanceof Error ? e.message : t('操作未完成'));
     } finally {
       setBusy(false);
     }
@@ -50,7 +52,7 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
       {actions &&
         createPortal(
           <button disabled={busy} onClick={() => file.current?.click()}>
-            {'导入词表'}{' '}
+            {t('导入词表')}{' '}
           </button>,
           actions,
         )}
@@ -59,13 +61,13 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
         ref={file}
         type="file"
         accept=".txt,.csv,.tsv"
-        aria-label={'选择词表文件'}
+        aria-label={t('选择词表文件')}
         onChange={(e) => {
           const selected = e.currentTarget.files?.[0];
           e.currentTarget.value = '';
           if (!selected) return;
           void act(async () => {
-            if (selected.size > 10 * 1024 * 1024) throw new Error('词表文件不能超过 10 MB');
+            if (selected.size > 10 * 1024 * 1024) throw new Error(t('词表文件不能超过 10 MB'));
             const result = parseWordlist(await selected.text(), selected.name);
             setMode('exclude');
             setPreview({ name: selected.name.replace(/\.[^.]+$/, '').slice(0, 120), ...result });
@@ -74,13 +76,13 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
       />
       {error && (
         <p class="error" role="alert">
-          {error}
+          {t(error)}
         </p>
       )}
       {!lists.length && (
         <section class="empty-records">
-          <h2>{'让阅读提醒更适合你'}</h2>
-          <p class="muted">{'导入自己的词表，减少熟悉词语的提醒，或专注于想学的词语。'}</p>
+          <h2>{t('让阅读提醒更适合你')}</h2>
+          <p class="muted">{t('导入自己的词表，减少熟悉词语的提醒，或专注于想学的词语。')}</p>
         </section>
       )}
       <div class="wordlist-list">
@@ -90,13 +92,13 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
               <div>
                 <h2>{list.name}</h2>
                 <p class="muted text-sm">
-                  {list.count.toLocaleString()} {'个词语'}
+                  {list.count.toLocaleString()} {t('个词语')}
                 </p>
               </div>
               <button
                 class="quiet"
-                aria-label={`移除词表 ${list.name}`}
-                title={'移除词表'}
+                aria-label={t('移除词表 {0}', list.name)}
+                title={t('移除词表')}
                 disabled={busy}
                 onClick={() => setRemoving(list)}
               >
@@ -104,9 +106,9 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
               </button>
             </div>
             <Select
-              label={'提醒用途'}
+              label={t('提醒用途')}
               value={list.mode}
-              options={modes.map((o) => ({ ...o, label: o.label }))}
+              options={modes.map((o) => ({ ...o, label: t(o.label) }))}
               change={(mode) =>
                 void act(() =>
                   send({ type: 'changeWordlist', data: { id: list.id, mode: mode as Wordlist['mode'] } }),
@@ -123,7 +125,7 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
                 )
               }
             >
-              {list.enabled ? '✓ 已启用' : '已停用'}
+              {list.enabled ? t('✓ 已启用') : t('已停用')}
             </button>
           </section>
         ))}
@@ -131,15 +133,15 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
       {preview && (
         <Modal title="wordlist-import-title" close={() => setPreview(undefined)}>
           <div class="settings-heading">
-            <h2 id="wordlist-import-title">{'导入词表'}</h2>
-            <Help label={'词表帮助'}>
-              {
-                '支持 UTF-8 的 TXT、CSV 和 TSV，每份最多十万个词语。多份“只提醒表内词”合并生效，“忽略表内词”从中排除；个人明确标记的学习中或认识状态优先。移除词表不删除学习记录。'
-              }{' '}
+            <h2 id="wordlist-import-title">{t('导入词表')}</h2>
+            <Help label={t('词表帮助')}>
+              {t(
+                '支持 UTF-8 的 TXT、CSV 和 TSV，每份最多十万个词语。多份“只提醒表内词”合并生效，“忽略表内词”从中排除；个人明确标记的学习中或认识状态优先。移除词表不删除学习记录。',
+              )}{' '}
             </Help>
           </div>
           <label>
-            {'名称'}{' '}
+            {t('名称')}{' '}
             <input
               autoFocus
               maxLength={120}
@@ -148,14 +150,14 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
             />
           </label>
           <Select
-            label={'提醒用途'}
+            label={t('提醒用途')}
             value={mode}
-            options={modes.map((o) => ({ ...o, label: o.label }))}
+            options={modes.map((o) => ({ ...o, label: t(o.label) }))}
             change={(value) => setMode(value as Wordlist['mode'])}
           />
           <p class="muted">
-            {preview.terms.length.toLocaleString()} {'个词语'}{' '}
-            {preview.duplicates > 0 && ` · 已去重 ${preview.duplicates} 项`}
+            {preview.terms.length.toLocaleString()} {t('个词语')}{' '}
+            {preview.duplicates > 0 && t(' · 已去重 {0} 项', preview.duplicates)}
           </p>
           <div class="wordlist-preview">
             {preview.terms.slice(0, 20).map((term) => (
@@ -164,12 +166,12 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
           </div>
           {error && (
             <p class="error" role="alert">
-              {error}
+              {t(error)}
             </p>
           )}
           <div class="detail-actions">
             <button disabled={busy} onClick={() => setPreview(undefined)}>
-              {'取消'}{' '}
+              {t('取消')}{' '}
             </button>
             <button
               class="primary"
@@ -184,19 +186,19 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
                 })
               }
             >
-              {busy ? '正在导入…' : '导入'}
+              {busy ? t('正在导入…') : t('导入')}
             </button>
           </div>
         </Modal>
       )}
       {removing && (
         <Modal title="wordlist-remove-title" close={() => setRemoving(undefined)}>
-          <h2 id="wordlist-remove-title">{'移除词表？'}</h2>
+          <h2 id="wordlist-remove-title">{t('移除词表？')}</h2>
           <p>{removing.name}</p>
-          <p class="muted">{'个人状态与学习记录会保留。'}</p>
+          <p class="muted">{t('个人状态与学习记录会保留。')}</p>
           <div class="detail-actions">
             <button disabled={busy} onClick={() => setRemoving(undefined)}>
-              {'取消'}{' '}
+              {t('取消')}{' '}
             </button>
             <button
               class="danger"
@@ -208,7 +210,7 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
                 })
               }
             >
-              {'移除'}{' '}
+              {t('移除')}{' '}
             </button>
           </div>
         </Modal>

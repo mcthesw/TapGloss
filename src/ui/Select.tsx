@@ -1,3 +1,4 @@
+import { useI18n } from './i18n';
 import { useId, useRef, useState } from 'preact/hooks';
 
 export function Select({
@@ -13,6 +14,7 @@ export function Select({
   editable?: boolean;
   change: (value: string) => void;
 }) {
+  const t = useI18n();
   const [open, setOpen] = useState(false),
     [active, setActive] = useState(-1);
   const input = useRef<HTMLInputElement>(null);
@@ -81,7 +83,7 @@ export function Select({
         <button
           type="button"
           class="select-toggle"
-          aria-label={`选择${label}`}
+          aria-label={t('选择{0}', label)}
           aria-expanded={open}
           aria-controls={`${id}-list`}
           onClick={() => {
@@ -96,7 +98,7 @@ export function Select({
         </button>
       </div>
       {open && (
-        <div id={`${id}-list`} class="select-menu" role="listbox" aria-label={`可用${label}`}>
+        <div id={`${id}-list`} class="select-menu" role="listbox" aria-label={t('可用{0}', label)}>
           {options.length ? (
             options.map((option, index) => (
               <button
@@ -112,7 +114,7 @@ export function Select({
               </button>
             ))
           ) : (
-            <p class="muted">暂无模型，可刷新或手动填写。</p>
+            <p class="muted">{t('暂无模型，可刷新或手动填写。')}</p>
           )}
         </div>
       )}

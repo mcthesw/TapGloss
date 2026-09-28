@@ -37,9 +37,9 @@ Anki 未启动时先保存本地材料，后台会按退避间隔重试；单个
 
 分词与高亮在本地进行。只有主动查询的表达、所在句子和位置会发送给配置的模型端点；整页、页面标题和网址不发送给模型。原文来源保存在浏览器本地，并随学习材料写入 Anki。API 凭据仅保存在当前浏览器扩展的本地设置中。
 
-当前实现包含本地持久化、阅读状态、语境生成、记录管理、AnkiConnect 导出、S3/WebDAV 跨设备同步及独立词表页。清除扩展数据或卸载会删除本地记录；Anki 已保存的笔记不受影响。
+当前实现包含本地持久化、阅读状态、语境生成、记录管理、AnkiConnect 导出、S3/WebDAV 跨设备同步、独立词表页及中英界面。清除扩展数据或卸载会删除本地记录；Anki 已保存的笔记不受影响。
 
-## 词表
+## 词表与界面语言
 
 顶部“词表”页面支持导入 UTF-8 的 TXT、CSV 和 TSV；导入前可预览、命名并选择用途。每份文件最多 10 MB、十万个词语，自动去重，简单词频表会识别词语列。
 
@@ -47,6 +47,8 @@ Anki 未启动时先保存本地材料，后台会按退避间隔重试；单个
 - **只提醒表内词**：把提醒范围限制在启用的词表中；多份同类词表合并生效，忽略表从中排除。
 - 个人明确标记的“认识 / 学习中”状态优先于词表。词表本身不表示掌握程度，停用或移除不会删除个人状态、学习材料或 Anki 笔记。
 - 导入内容与启用状态参与跨设备同步。网页只查询可见词语的本地索引，不读取整份词表；停用或移除后立即更新已打开页面。被词表隐藏的词仍可选中后按 `Alt + Q` 查询。
+
+设置中的“界面语言”支持自动、中文、English。自动跟随浏览器语言，非中文浏览器使用英文；切换仅影响扩展界面，不翻译或改写原文与学习材料。
 
 ## 跨设备同步
 
@@ -80,6 +82,10 @@ pnpm run test:e2e
 可复现的大数据测试：`pnpm run build` 后执行 `node scripts/benchmark-records.mjs 100000`。脚本使用独立浏览器配置与合成数据，不连接真实 Anki 或模型；报告和截图写入 `.output/benchmark-100000-v2`。可用 `TAPGLOSS_TEST_BROWSER` 指定 Chromium；设置 `TAPGLOSS_BENCH_LEGACY` 为旧版解压目录可验证旧库迁移。迁移测试会在临时浏览器配置中开启开发者模式并重载该测试扩展。
 
 同步测试使用临时 S3 兼容服务和 WebDAV 服务，两份独立浏览器配置验证传输与 Anki 边界，不需要私人云存储凭据。构建后执行 `node scripts/benchmark-sync.mjs 100000` 可测同步的大库开销；结果位于 `.output/sync-performance/`，使用真正的 Chromium IndexedDB 与本机 S3 兼容 HTTP 服务，不代表广域网耗时。
+
+`node scripts/benchmark-wordlists.mjs 100000` 验证词表预览、导入和按页面词语查询的开销，使用独立 Chromium 配置，结果与截图写入 `.output/wordlist-performance/`。
+
+Firefox 实际浏览器测试：先执行 `pnpm run zip:firefox`，设置 `TAPGLOSS_FIREFOX_TEST=1` 后执行 `pnpm exec vitest run tests/firefox.test.ts`。可以通过 `TAPGLOSS_FIREFOX_BINARY` 指定 Firefox 路径。Selenium 会管理测试驱动，创建独立临时配置并临时安装扩展；测试通过实际控件验证查词、词表导入与两种后端同步，不使用日常浏览器配置。
 
 ## 代码边界
 

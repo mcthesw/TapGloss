@@ -360,7 +360,7 @@ test('visible idle record page performs no periodic reads for 30 seconds', async
   expect(await options.evaluate(() => (globalThis as unknown as { reads: number }).reads)).toBe(0);
 });
 
-test('wordlists have their own page and update reading reminders', async () => {
+test('wordlists have their own page, update reading reminders and support English UI', async () => {
   await options.getByRole('button', { name: '词表', exact: true }).click();
   await expect(options.getByRole('button', { name: '导入词表', exact: true })).toBeVisible();
   await options.getByLabel('选择词表文件').setInputFiles({
@@ -391,8 +391,17 @@ test('wordlists have their own page and update reading reminders', async () => {
   await options.getByRole('button', { name: '已停用', exact: true }).click();
   await expect.poll(highlighted).not.toContain('rain');
   await options.screenshot({ path: 'test-results/wordlists.png', fullPage: true });
-  await options.getByRole('button', { name: '移除词表 Common', exact: true }).click();
-  await options.getByRole('dialog').getByRole('button', { name: '移除', exact: true }).click();
+  await options.getByRole('button', { name: '设置', exact: true }).click();
+  await options.getByLabel('界面语言', { exact: true }).click();
+  await options.getByRole('option', { name: 'English', exact: true }).click();
+  await options.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(options.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(options.getByRole('button', { name: 'Save', exact: true })).toHaveAttribute('title', 'Saved');
+  await options.screenshot({ path: 'test-results/settings-english.png', fullPage: true });
+  await options.getByRole('button', { name: 'Wordlists', exact: true }).click();
+  await expect(options.getByLabel('Use for reminders', { exact: true })).toHaveValue('Ignore listed words');
+  await options.getByRole('button', { name: 'Remove wordlist Common', exact: true }).click();
+  await options.getByRole('dialog').getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(options.getByRole('heading', { name: 'Common', exact: true })).toHaveCount(0);
   await expect.poll(highlighted).toContain('rain');
   await reading.close();

@@ -1,6 +1,8 @@
+import { useI18n } from './i18n';
 import type { Material } from '../domain/model';
 
 export function Examples({ material, numbered = false }: { material: Material; numbered?: boolean }) {
+  const t = useI18n();
   const items = material.examples.map((e) => {
     const i = e.text.indexOf(e.target);
     const text = (
@@ -21,7 +23,7 @@ export function Examples({ material, numbered = false }: { material: Material; n
     );
   });
   return numbered ? (
-    <ol class="examples lookup-examples" aria-label="例句">
+    <ol class="examples lookup-examples" aria-label={t('例句')}>
       {items}
     </ol>
   ) : (

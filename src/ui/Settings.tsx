@@ -1,4 +1,4 @@
-import { SyncSettings } from './SyncSettings';
+import { useI18n } from './i18n';
 import { createPortal } from 'preact/compat';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { settingsSchema, type Settings as Configuration } from '../domain/model';
@@ -7,6 +7,7 @@ import { AIConnection } from './AIConnection';
 import { Help } from './Help';
 import { Select } from './Select';
 import { ExcludedLanguages } from './ExcludedLanguages';
+import { SyncSettings } from './SyncSettings';
 
 export function Settings({
   initial,
@@ -19,6 +20,7 @@ export function Settings({
   actions: HTMLElement | null;
   active?: boolean;
 }) {
+  const t = useI18n();
   const [value, setValue] = useState(initial),
     [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(false),
@@ -70,7 +72,7 @@ export function Settings({
           if (savingRevision === revision.current) setSuccess(true);
         } catch (err) {
           setError(
-            err instanceof Error && err.name !== 'ZodError' ? err.message : '请检查 API 地址与连接选项',
+            err instanceof Error && err.name !== 'ZodError' ? err.message : t('请检查 API 地址与连接选项'),
           );
         } finally {
           setBusy(false);
@@ -85,20 +87,20 @@ export function Settings({
             class={`save-button ${success ? 'saved' : ''}`}
             aria-busy={busy}
             disabled={busy}
-            title={success ? '已保存' : '保存'}
+            title={success ? t('已保存') : t('保存')}
           >
             {busy && (
               <svg class="save-ring" aria-hidden="true" viewBox="0 0 80 36" preserveAspectRatio="none">
                 <rect x="1" y="1" width="78" height="34" rx="7" pathLength="100" />
               </svg>
             )}
-            保存
+            {t('保存')}{' '}
           </button>,
           actions,
         )}
       {error && (
         <p class="error" role="alert">
-          {error}
+          {t(error)}
         </p>
       )}
       <div class="settings-columns">
@@ -114,28 +116,29 @@ export function Settings({
         <div class="settings-column">
           <section class="paper space-y-5">
             <div class="settings-heading">
-              <h2>阅读与外观</h2>
-              <Help label="阅读与外观帮助">
-                选中词组或已认识的词后按 Alt + Q 查询。自动外观下弹窗跟随网页，记录页跟随系统，复习卡跟随
-                Anki。 忽略语言不高亮、不响应普通点击；主动选中后仍可用 Alt + Q 查询。
+              <h2>{t('阅读与外观')}</h2>
+              <Help label={t('阅读与外观帮助')}>
+                {t(
+                  '选中词组或已认识的词后按 Alt + Q 查询。自动外观下弹窗跟随网页，记录页跟随系统，复习卡跟随 Anki。 忽略语言不高亮、不响应普通点击；主动选中后仍可用 Alt + Q 查询。',
+                )}{' '}
               </Help>
             </div>
             <Select
-              label="查询方式"
+              label={t('查询方式')}
               value={value.gesture}
               options={[
-                { value: 'click', label: '点击词语' },
-                { value: 'alt', label: 'Alt + 点击词语' },
+                { value: 'click', label: t('点击词语') },
+                { value: 'alt', label: t('Alt + 点击词语') },
               ]}
               change={(gesture) => change({ gesture: gesture as Configuration['gesture'] })}
             />
             <Select
-              label="外观"
+              label={t('外观')}
               value={value.theme}
               options={[
-                { value: 'auto', label: '自动' },
-                { value: 'light', label: '浅色' },
-                { value: 'dark', label: '深色' },
+                { value: 'auto', label: t('自动') },
+                { value: 'light', label: t('浅色') },
+                { value: 'dark', label: t('深色') },
               ]}
               change={(theme) => change({ theme: theme as Configuration['theme'] })}
             />
@@ -143,21 +146,33 @@ export function Settings({
               value={value.excludedLanguages}
               change={(excludedLanguages) => change({ excludedLanguages })}
             />
+            <Select
+              label={t('界面语言')}
+              value={value.interfaceLanguage}
+              options={[
+                { value: 'auto', label: t('自动') },
+                { value: 'zh', label: '中文' },
+                { value: 'en', label: 'English' },
+              ]}
+              change={(interfaceLanguage) =>
+                change({ interfaceLanguage: interfaceLanguage as Configuration['interfaceLanguage'] })
+              }
+            />
           </section>
           <section class="paper space-y-5">
             <div class="settings-heading">
               <h2>Anki</h2>
-              <Help label="Anki 帮助">
-                打开 Anki 并安装{' '}
+              <Help label={t('Anki 帮助')}>
+                {t('打开 Anki 并安装')}{' '}
                 <a href="https://ankiweb.net/shared/info/2055492159" target="_blank" rel="noreferrer">
                   AnkiConnect
                 </a>
-                。例句会自动制卡；Anki 未打开时先保存在本地。
+                {t('。例句会自动制卡；Anki 未打开时先保存在本地。')}{' '}
               </Help>
             </div>
             <div class="space-y-5">
               <label>
-                AnkiConnect 地址
+                {t('AnkiConnect 地址')}{' '}
                 <input
                   type="url"
                   required
@@ -166,11 +181,11 @@ export function Settings({
                 />
               </label>
               <label>
-                Anki 牌组
+                {t('Anki 牌组')}{' '}
                 <input required value={value.deck} onInput={(e) => change({ deck: e.currentTarget.value })} />
               </label>
               <label>
-                AnkiConnect 密钥（可选）
+                {t('AnkiConnect 密钥（可选）')}{' '}
                 <input
                   type="password"
                   autoComplete="off"
@@ -195,22 +210,22 @@ export function Settings({
                     { type: 'testAnki', data: { ankiUrl: value.ankiUrl, ankiKey: value.ankiKey } },
                     controller.signal,
                   );
-                  if (id === ankiSequence.current) setAnkiNotice('Anki 连接正常');
+                  if (id === ankiSequence.current) setAnkiNotice(t('Anki 连接正常'));
                 } catch (error) {
                   if (id === ankiSequence.current) {
                     setAnkiFailed(true);
-                    setAnkiNotice(error instanceof Error ? error.message : '无法连接 Anki');
+                    setAnkiNotice(error instanceof Error ? error.message : t('无法连接 Anki'));
                   }
                 } finally {
                   if (id === ankiSequence.current) setAnkiBusy(false);
                 }
               }}
             >
-              {ankiBusy ? '正在测试…' : '测试 Anki 连接'}
+              {ankiBusy ? t('正在测试…') : t('测试 Anki 连接')}
             </button>
             {ankiNotice && (
               <p class={ankiFailed ? 'error' : 'notice'} role="status">
-                {ankiNotice}
+                {t(ankiNotice)}
               </p>
             )}
           </section>

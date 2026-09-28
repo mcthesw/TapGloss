@@ -79,6 +79,7 @@ type Results = {
     gesture: 'click' | 'alt';
     configured: boolean;
     theme: 'auto' | 'light' | 'dark';
+    interfaceLanguage: 'auto' | 'zh' | 'en';
     excludedLanguages: string[];
   };
   list: RecordPage;

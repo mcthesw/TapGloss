@@ -1,3 +1,4 @@
+import { useI18n } from './i18n';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { send, subscribeChanges } from '../messages';
 import type { SyncSettings as Configuration, SyncStatus } from '../domain/sync';
@@ -15,6 +16,7 @@ export function SyncSettings({
   change: (value: Configuration) => void;
   active: boolean;
 }) {
+  const t = useI18n();
   const [status, setStatus] = useState<SyncStatus>({ running: false });
   const [testing, setTesting] = useState(false),
     [notice, setNotice] = useState(''),
@@ -49,18 +51,18 @@ export function SyncSettings({
   return (
     <section class="paper space-y-5">
       <div class="settings-heading">
-        <h2>{'同步'}</h2>
-        <Help label={'同步帮助'}>
-          {
-            '在各设备填写同一工作区，阅读记录与词汇状态会自动合并。启用后每五分钟同步，离线时继续保存本地。 密钥、连接设置和本机 Anki 任务不参与同步；收到的记录不会重复制卡。远程数据未加密，请使用自己的私有存储。 测试连接只检查读取权限；保存后可立即同步。'
-          }{' '}
+        <h2>{t('同步')}</h2>
+        <Help label={t('同步帮助')}>
+          {t(
+            '在各设备填写同一工作区，阅读记录与词汇状态会自动合并。启用后每五分钟同步，离线时继续保存本地。 密钥、连接设置和本机 Anki 任务不参与同步；收到的记录不会重复制卡。远程数据未加密，请使用自己的私有存储。 测试连接只检查读取权限；保存后可立即同步。',
+          )}{' '}
         </Help>
       </div>
       <Select
-        label={'存储方式'}
+        label={t('存储方式')}
         value={value.backend}
         options={[
-          { value: 'off', label: '停用同步' },
+          { value: 'off', label: t('停用同步') },
           { value: 's3', label: 'S3' },
           { value: 'webdav', label: 'WebDAV' },
         ]}
@@ -69,7 +71,7 @@ export function SyncSettings({
       {value.backend !== 'off' && (
         <>
           <label>
-            {value.backend === 's3' ? 'S3 地址' : 'WebDAV 地址'}
+            {value.backend === 's3' ? t('S3 地址') : t('WebDAV 地址')}
             <input
               type="url"
               required
@@ -80,7 +82,7 @@ export function SyncSettings({
           {value.backend === 's3' && (
             <div class="sync-fields">
               <label>
-                {'存储桶'}{' '}
+                {t('存储桶')}{' '}
                 <input
                   required
                   value={value.bucket}
@@ -88,7 +90,7 @@ export function SyncSettings({
                 />
               </label>
               <label>
-                {'区域'}{' '}
+                {t('区域')}{' '}
                 <input
                   required
                   value={value.region}
@@ -98,7 +100,7 @@ export function SyncSettings({
             </div>
           )}
           <label>
-            {value.backend === 's3' ? 'Access Key ID' : '用户名'}
+            {value.backend === 's3' ? 'Access Key ID' : t('用户名')}
             <input
               autoComplete="off"
               value={value.username}
@@ -106,7 +108,7 @@ export function SyncSettings({
             />
           </label>
           <label>
-            {value.backend === 's3' ? 'Secret Access Key' : '密码'}
+            {value.backend === 's3' ? 'Secret Access Key' : t('密码')}
             <input
               type="password"
               autoComplete="off"
@@ -115,7 +117,7 @@ export function SyncSettings({
             />
           </label>
           <label>
-            {'工作区'}{' '}
+            {t('工作区')}{' '}
             <input
               required
               pattern="[a-zA-Z0-9_-]{1,80}"
@@ -136,23 +138,23 @@ export function SyncSettings({
                 setError(false);
                 try {
                   await send({ type: 'testSync', data: value }, controller.signal);
-                  if (!controller.signal.aborted) setNotice('连接正常');
+                  if (!controller.signal.aborted) setNotice(t('连接正常'));
                 } catch (e) {
                   if (!controller.signal.aborted) {
                     setError(true);
-                    setNotice(e instanceof Error ? e.message : '连接失败');
+                    setNotice(e instanceof Error ? e.message : t('连接失败'));
                   }
                 } finally {
                   if (!controller.signal.aborted) setTesting(false);
                 }
               }}
             >
-              {testing ? '正在测试…' : '测试同步连接'}
+              {testing ? t('正在测试…') : t('测试同步连接')}
             </button>
             <button
               type="button"
               disabled={dirty || status.running}
-              title={dirty ? '请先保存设置' : undefined}
+              title={dirty ? t('请先保存设置') : undefined}
               onClick={async () => {
                 setStatus((s) => ({ ...s, running: true }));
                 try {
@@ -161,27 +163,27 @@ export function SyncSettings({
                   setStatus((s) => ({
                     ...s,
                     running: false,
-                    error: e instanceof Error ? e.message : '同步失败',
+                    error: e instanceof Error ? e.message : t('同步失败'),
                   }));
                 }
               }}
             >
-              {status.running ? '正在同步…' : '立即同步'}
+              {status.running ? t('正在同步…') : t('立即同步')}
             </button>
           </div>
           {notice && (
             <p class={error ? 'error' : 'notice'} role="status">
-              {notice}
+              {t(notice)}
             </p>
           )}
           {status.error ? (
             <p class="error" role="status">
-              {status.error}
+              {t(status.error)}
             </p>
           ) : (
             status.lastSuccess && (
               <p class="muted text-sm">
-                {'上次同步'} {new Date(status.lastSuccess).toLocaleString()}
+                {t('上次同步')} {new Date(status.lastSuccess).toLocaleString()}
               </p>
             )
           )}

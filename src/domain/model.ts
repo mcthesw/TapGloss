@@ -12,6 +12,7 @@ export const settingsSchema = z.object({
   deck: z.string().trim().min(1).max(200).default('TapGloss'),
   prompt: z.string().max(12000).default(''),
   theme: z.enum(['auto', 'light', 'dark']).default('auto'),
+  interfaceLanguage: z.enum(['auto', 'zh', 'en']).default('auto'),
   gesture: z.enum(['click', 'alt']).default('click'),
   excludedLanguages: z.array(z.enum(languageCodes)).max(languageCodes.length).default([]),
   sync: syncSettingsSchema.default(() => syncSettingsSchema.parse({})),

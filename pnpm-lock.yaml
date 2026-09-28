@@ -59,6 +59,9 @@ importers:
       '@types/s3rver':
         specifier: ^3.7.4
         version: 3.7.4
+      '@types/selenium-webdriver':
+        specifier: ^4.35.7
+        version: 4.35.7
       eslint:
         specifier: ^10.11.0
         version: 10.11.0(jiti@2.7.0)
@@ -71,6 +74,9 @@ importers:
       s3rver:
         specifier: ^3.7.1
         version: 3.7.1
+      selenium-webdriver:
+        specifier: ^4.49.0
+        version: 4.49.0
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3

@@ -13,6 +13,14 @@ import { importWordlist, changeWordlist, readingWords } from '../src/storage/wor
 
 export default defineBackground(() => {
   const db = new Database();
+  // Large one-time IndexedDB upgrades can exceed MV3's idle timeout. Stop as soon as opening finishes.
+  const opening = setInterval(() => {
+    void browser.runtime.getPlatformInfo();
+  }, 20000);
+  void db
+    .open()
+    .finally(() => clearInterval(opening))
+    .catch(() => {});
   const settings = async () =>
     settingsSchema.parse((await browser.storage.local.get('settings')).settings ?? {});
   const subscribers = new Set<ReturnType<typeof browser.runtime.connect>>();
@@ -136,6 +144,7 @@ export default defineBackground(() => {
           data = {
             gesture: s.gesture,
             theme: s.theme,
+            interfaceLanguage: s.interfaceLanguage,
             excludedLanguages: s.excludedLanguages,
             configured: !!s.apiKey || new URL(s.baseUrl).hostname !== 'api.deepseek.com',
           };

@@ -470,7 +470,21 @@ summary {
     gap: 16px;
   }
   .header-controls {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: space-between;
+  }
+  .page-nav {
+    flex-wrap: wrap;
+    padding-right: 12px;
+  }
+  .page-actions {
+    min-width: 0;
     margin-left: auto;
+  }
+  .page-actions > button {
+    white-space: nowrap;
   }
   .app-page {
     padding: 20px 18px 40px;

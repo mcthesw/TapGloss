@@ -1,9 +1,11 @@
+import { useI18n } from './i18n';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { send, subscribeChanges } from '../messages';
 import { vocabularyId, type RecordView, type Source } from '../domain/model';
 import { Examples } from './Material';
 
 export function Lookup({ source, x, y, close }: { source: Source; x: number; y: number; close: () => void }) {
+  const t = useI18n();
   const [record, setRecord] = useState<RecordView>();
   const [error, setError] = useState('');
   const root = useRef<HTMLElement>(null);
@@ -36,7 +38,7 @@ export function Lookup({ source, x, y, close }: { source: Source; x: number; y: 
         const next = await send({ type: 'read', data: id });
         if (!disposed && seq === sequence) setRecord(next);
       } catch {
-        if (!disposed) setError('连接已断开，请刷新页面');
+        if (!disposed) setError(t('连接已断开，请刷新页面'));
       }
     };
     const unsubscribe = subscribeChanges((change) => {
@@ -61,17 +63,17 @@ export function Lookup({ source, x, y, close }: { source: Source; x: number; y: 
     record?.job?.error ||
     (material
       ? record?.entry?.noteId && !record.job
-        ? '已保存到 Anki'
+        ? t('已保存到 Anki')
         : record?.job
-          ? '已保存 · 等待 Anki'
-          : '已保存'
-      : '已记下，正在生成例句…');
+          ? t('已保存 · 等待 Anki')
+          : t('已保存')
+      : t('已记下，正在生成例句…'));
   return (
     <section
       class="lookup"
       ref={root}
       role="dialog"
-      aria-label="语境查询"
+      aria-label={t('语境查询')}
       style={position}
       onClick={(e) => e.stopPropagation()}
     >
@@ -80,20 +82,20 @@ export function Lookup({ source, x, y, close }: { source: Source; x: number; y: 
           <h2>{material?.lemma ?? source.sentence.slice(source.start, source.end)}</h2>
           {material?.gloss && <p class="lookup-gloss">{material.gloss}</p>}
         </div>
-        <button class="quiet lookup-close" aria-label="关闭" onClick={close}>
+        <button class="quiet lookup-close" aria-label={t('关闭')} onClick={close}>
           ✕
         </button>
       </header>
       <div class="lookup-body">
         <div class="source">
-          <div class="label">原文</div>
+          <div class="label">{t('原文')}</div>
           {source.sentence.replace(/\s+/gu, ' ').trim()}
         </div>
         {material && <Examples material={material} numbered />}
       </div>
       <footer class={`lookup-footer ${error || record?.job?.error ? 'has-error' : ''}`}>
         <p class={`lookup-status ${error || record?.job?.error ? 'error' : 'muted'}`} role="status">
-          {status}
+          {t(status)}
         </p>
         {record?.entry ? (
           <button
@@ -110,19 +112,19 @@ export function Lookup({ source, x, y, close }: { source: Source; x: number; y: 
                 });
                 setRecord({ ...record, state: record.state === 'known' ? 'learning' : 'known' });
               } catch {
-                setError('暂时无法保存状态');
+                setError(t('暂时无法保存状态'));
               }
             }}
           >
-            {record.state === 'known' ? '恢复学习' : '认识了'}
+            {record.state === 'known' ? t('恢复学习') : t('认识了')}
           </button>
         ) : (
           <span />
         )}
         <button
           class="quiet lookup-manage"
-          aria-label="记录与设置"
-          title="记录与设置"
+          aria-label={t('记录与设置')}
+          title={t('记录与设置')}
           onClick={() => {
             void send({ type: 'open' });
           }}

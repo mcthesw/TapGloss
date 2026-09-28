@@ -161,7 +161,7 @@ Yjs 限定在存储与同步边界内：
 
 界面语言支持自动、中文和英文。自动跟随浏览器语言，非中文使用英文；偏好只保存在本机。翻译限定为界面文案与受控错误信息，原文、用户命名和模型生成材料不参与翻译。
 
-使用单一扩展项目：TypeScript 严格模式、WXT、Preact、Tailwind CSS v4；页面注入 UI 使用 Shadow DOM 隔离样式。IndexedDB 与 Dexie 负责本地持久化、索引及任务；Yjs 负责共享数据合并；Zod 校验外部输入；Vitest 和 fast-check 用于行为及合并性质验证。
+使用单一扩展项目：TypeScript 严格模式、WXT、Preact、Tailwind CSS v4；页面注入 UI 使用 Shadow DOM 隔离样式。IndexedDB 与 Dexie 负责本地持久化、索引及任务；Yjs 负责共享数据合并；Zod 校验外部输入；Vitest 用于行为与合并验证。
 
 | 模块           | 职责                                                       |
 | -------------- | ---------------------------------------------------------- |

@@ -1,3 +1,4 @@
+import { useI18n } from './i18n';
 import { useEffect, useState } from 'preact/hooks';
 import { send, subscribeChanges } from '../messages';
 import { vocabularyId, type Material } from '../domain/model';
@@ -6,6 +7,7 @@ import { Modal } from './Modal';
 import { Examples } from './Material';
 
 export function RecordDetail({ id, close }: { id: string; close: () => void }) {
+  const t = useI18n();
   const [detail, setDetail] = useState<Detail>();
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<Material>();
@@ -24,7 +26,7 @@ export function RecordDetail({ id, close }: { id: string; close: () => void }) {
         if (!next) close();
         else setDetail(next);
       } catch (e) {
-        if (!disposed) setError(e instanceof Error ? e.message : '无法读取记录');
+        if (!disposed) setError(e instanceof Error ? e.message : t('无法读取记录'));
       }
     };
     const unsubscribe = subscribeChanges((change) => {
@@ -41,7 +43,7 @@ export function RecordDetail({ id, close }: { id: string; close: () => void }) {
     try {
       await action();
     } catch (e) {
-      setError(e instanceof Error ? e.message : '操作未完成');
+      setError(e instanceof Error ? e.message : t('操作未完成'));
     } finally {
       setBusy(false);
     }
@@ -52,24 +54,24 @@ export function RecordDetail({ id, close }: { id: string; close: () => void }) {
   const term =
     material?.lemma ??
     record?.capture.source.sentence.slice(record.capture.source.start, record.capture.source.end) ??
-    '读取中…';
+    t('读取中…');
   return (
     <Modal title="record-title" close={close}>
       <div class="detail-heading">
         <h2 id="record-title">{term}</h2>
-        <button class="quiet" aria-label="关闭详情" onClick={close}>
+        <button class="quiet" aria-label={t('关闭详情')} onClick={close}>
           ✕
         </button>
       </div>
       {error && (
         <p class="error" role="alert">
-          {error}
+          {t(error)}
         </p>
       )}
       {editing ? (
         <div class="detail-editor">
           <label>
-            简短释义
+            {t('简短释义')}{' '}
             <textarea
               value={editing.gloss}
               onInput={(e) => setEditing({ ...editing, gloss: e.currentTarget.value })}
@@ -78,7 +80,7 @@ export function RecordDetail({ id, close }: { id: string; close: () => void }) {
           {editing.examples.map((example, index) => (
             <div class="mt-4" key={index}>
               <label>
-                例句 {index + 1}
+                {t('例句')} {index + 1}
                 <textarea
                   value={example.text}
                   onInput={(e) =>
@@ -92,7 +94,7 @@ export function RecordDetail({ id, close }: { id: string; close: () => void }) {
                 />
               </label>
               <label class="mt-2">
-                挖空表达
+                {t('挖空表达')}{' '}
                 <input
                   value={example.target}
                   onInput={(e) =>
@@ -108,7 +110,7 @@ export function RecordDetail({ id, close }: { id: string; close: () => void }) {
             </div>
           ))}
           <div class="detail-actions">
-            <button onClick={() => setEditing(undefined)}>取消编辑</button>
+            <button onClick={() => setEditing(undefined)}>{t('取消编辑')}</button>
             <button
               disabled={busy}
               onClick={() =>
@@ -118,13 +120,13 @@ export function RecordDetail({ id, close }: { id: string; close: () => void }) {
                 })
               }
             >
-              保存
+              {t('保存')}{' '}
             </button>
           </div>
         </div>
       ) : deleting ? (
         <div>
-          <p>删除这条学习记录？</p>
+          <p>{t('删除这条学习记录？')}</p>
           {entry && (
             <label class="my-4">
               <input
@@ -132,12 +134,12 @@ export function RecordDetail({ id, close }: { id: string; close: () => void }) {
                 checked={deleteAnki}
                 onChange={(e) => setDeleteAnki(e.currentTarget.checked)}
               />{' '}
-              同时删除 Anki 笔记
+              {t('同时删除 Anki 笔记')}{' '}
             </label>
           )}
-          <p class="muted">{deleteAnki ? '将删除关联笔记及复习历史。' : 'Anki 笔记会保留。'}</p>
+          <p class="muted">{deleteAnki ? t('将删除关联笔记及复习历史。') : t('Anki 笔记会保留。')}</p>
           <div class="detail-actions">
-            <button onClick={() => setDeleting(false)}>取消删除</button>
+            <button onClick={() => setDeleting(false)}>{t('取消删除')}</button>
             <button
               class="danger"
               disabled={busy}
@@ -149,7 +151,7 @@ export function RecordDetail({ id, close }: { id: string; close: () => void }) {
                 })
               }
             >
-              确认删除
+              {t('确认删除')}{' '}
             </button>
           </div>
         </div>
@@ -163,7 +165,7 @@ export function RecordDetail({ id, close }: { id: string; close: () => void }) {
           )}
           {!!detail?.sources.length && (
             <details class="mt-4">
-              <summary>原文与来源</summary>
+              <summary>{t('原文与来源')}</summary>
               {detail.sources.map((c) => (
                 <div class="mt-4" key={c.id}>
                   <p class="source">{c.source.sentence.replace(/\s+/gu, ' ').trim()}</p>
@@ -174,11 +176,11 @@ export function RecordDetail({ id, close }: { id: string; close: () => void }) {
                     <button
                       class="quiet"
                       onClick={() => {
-                        if (confirm('删除这条来源？学习材料与 Anki 笔记会保留。'))
+                        if (confirm(t('删除这条来源？学习材料与 Anki 笔记会保留。')))
                           void act(() => send({ type: 'removeSource', data: c.id }));
                       }}
                     >
-                      移除来源
+                      {t('移除来源')}{' '}
                     </button>
                   </div>
                 </div>
@@ -186,23 +188,23 @@ export function RecordDetail({ id, close }: { id: string; close: () => void }) {
               {(sourcePage > 0 || detail.moreSources) && (
                 <div class="detail-actions">
                   <button disabled={!sourcePage} onClick={() => setSourcePage(sourcePage - 1)}>
-                    上一组来源
+                    {t('上一组来源')}{' '}
                   </button>
                   <button disabled={!detail.moreSources} onClick={() => setSourcePage(sourcePage + 1)}>
-                    下一组来源
+                    {t('下一组来源')}{' '}
                   </button>
                 </div>
               )}
             </details>
           )}
           <p class={`detail-status ${record?.job?.error ? 'error' : 'muted'}`} role="status">
-            {record?.job?.error ||
+            {(record?.job?.error && t(record.job.error)) ||
               (record?.job
                 ? material
-                  ? '等待 Anki'
-                  : '正在生成例句…'
+                  ? t('等待 Anki')
+                  : t('正在生成例句…')
                 : entry?.noteId
-                  ? '已保存到 Anki'
+                  ? t('已保存到 Anki')
                   : '')}
           </p>
           <div class="detail-actions">
@@ -222,16 +224,16 @@ export function RecordDetail({ id, close }: { id: string; close: () => void }) {
                   )
                 }
               >
-                {record?.state === 'known' ? '恢复学习' : '认识了'}
+                {record?.state === 'known' ? t('恢复学习') : t('认识了')}
               </button>
             )}
-            {material && <button onClick={() => setEditing(structuredClone(material))}>编辑</button>}
+            {material && <button onClick={() => setEditing(structuredClone(material))}>{t('编辑')}</button>}
             {record?.job?.error && (
               <button
                 disabled={busy}
                 onClick={() => void act(() => send({ type: 'retry', data: record.job!.id }))}
               >
-                重试
+                {t('重试')}{' '}
               </button>
             )}
             {record && (
@@ -242,7 +244,7 @@ export function RecordDetail({ id, close }: { id: string; close: () => void }) {
                   setDeleteAnki(false);
                 }}
               >
-                删除
+                {t('删除')}{' '}
               </button>
             )}
           </div>

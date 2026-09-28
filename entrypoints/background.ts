@@ -1,157 +1,234 @@
 import { defineBackground } from 'wxt/utils/define-background';
 import { browser } from 'wxt/browser';
-import { settingsSchema, validateMaterial } from '../src/domain/model';
-import { Database, capture, queue, removeEntry, view } from '../src/storage/database';
+import { settingsSchema, normalize } from '../src/domain/model';
+import { Database, capture, removeEntry, view } from '../src/storage/database';
 import { Worker } from '../src/storage/worker';
-import { requestSchema } from '../src/messages';
+import { requestSchema, type Change } from '../src/messages';
 import { availableModels, explain } from '../src/explain/client';
 import { Anki } from '../src/anki/client';
+import { listRecords, recordDetail } from '../src/storage/catalog';
+import { editMaterial, removeSource } from '../src/storage/mutations';
 
 export default defineBackground(() => {
   const db = new Database();
   const settings = async () =>
     settingsSchema.parse((await browser.storage.local.get('settings')).settings ?? {});
-  const worker = new Worker(db, settings);
-  const wake = () => {
-    void worker.run().catch(() => {
-      /* Durable jobs are retried by the next alarm. */
-    });
+  const subscribers = new Set<ReturnType<typeof browser.runtime.connect>>();
+  let pending: Change = {},
+    timer: ReturnType<typeof setTimeout> | undefined;
+  const notify = (change: Change) => {
+    pending = { ...pending, ...change };
+    if (timer) return;
+    timer = setTimeout(async () => {
+      const message = pending;
+      pending = {};
+      timer = undefined;
+      message.revision = crypto.randomUUID();
+      await browser.storage.session.set({ changeRevision: message.revision });
+      for (const port of subscribers) {
+        try {
+          port.postMessage(message);
+        } catch {
+          subscribers.delete(port);
+        }
+      }
+    }, 30);
   };
-  browser.alarms.onAlarm.addListener(wake);
-  browser.runtime.onStartup.addListener(wake);
-  void browser.alarms.create('work', { periodInMinutes: 1 });
+  const worker = new Worker(db, settings, (vocabulary) =>
+    notify({ records: true, ...(vocabulary ? { vocabulary: true } : {}) }),
+  );
+  let waking: Promise<void> | undefined;
+  const wake = () =>
+    (waking ??= (async () => {
+      await worker.run();
+      const next = await db.jobs
+        .orderBy('nextAt')
+        .filter((j) => !j.blocked)
+        .first();
+      if (next)
+        await browser.alarms.create('work', {
+          when: Math.max(Date.now() + 1000, next.nextAt, next.leaseUntil),
+        });
+      else await browser.alarms.clear('work');
+    })()
+      .catch(() => {
+        void browser.alarms.create('work', { when: Date.now() + 60000 });
+      })
+      .finally(() => {
+        waking = undefined;
+      }));
+  browser.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === 'work') void wake();
+  });
+  browser.runtime.onStartup.addListener(() => {
+    void wake();
+  });
   (browser.action ?? browser.browserAction).onClicked.addListener(() => {
     void browser.runtime.openOptionsPage();
   });
-  browser.runtime.onInstalled.addListener(() => {
-    void browser.runtime.openOptionsPage();
-    wake();
+  browser.runtime.onInstalled.addListener((details) => {
+    if (details.reason === 'install') void browser.runtime.openOptionsPage();
+    void wake();
   });
-  browser.runtime.onMessage.addListener((raw, sender) => {
-    if (sender.id !== browser.runtime.id) return;
-    return (async () => {
-      try {
-        const request = requestSchema.parse(raw);
-        const trusted = sender.url?.startsWith(browser.runtime.getURL('/'));
-        if (!trusted && !['lookup', 'read', 'vocabulary', 'state', 'open'].includes(request.type))
-          throw new Error('此操作只能在扩展页面中进行');
-        let data: unknown;
-        switch (request.type) {
-          case 'lookup':
-            data = await capture(db, request.data);
-            wake();
-            break;
-          case 'read':
-            data = await view(db, request.data);
-            break;
-          case 'vocabulary': {
-            const s = await settings();
-            data = {
-              words: await db.vocabulary.toArray(),
-              gesture: s.gesture,
-              theme: s.theme,
-              excludedLanguages: s.excludedLanguages,
-              configured: !!s.apiKey || new URL(s.baseUrl).hostname !== 'api.deepseek.com',
-            };
-            break;
-          }
-          case 'settings':
-            data = await settings();
-            break;
-          case 'saveSettings':
+
+  const handle = async (raw: unknown, sender: { id?: string; url?: string }, signal?: AbortSignal) => {
+    if (sender.id !== browser.runtime.id) return { ok: false, error: '无效来源' };
+    try {
+      const request = requestSchema.parse(raw);
+      const trusted = sender.url?.startsWith(browser.runtime.getURL('/'));
+      if (
+        !trusted &&
+        !['lookup', 'read', 'vocabulary', 'readingSettings', 'state', 'open'].includes(request.type)
+      )
+        throw new Error('此操作只能在扩展页面中进行');
+      let data: unknown;
+      let change: Change | undefined;
+      let runJobs = false;
+      switch (request.type) {
+        case 'lookup':
+          data = await capture(db, request.data);
+          change = { records: true };
+          runJobs = true;
+          break;
+        case 'read':
+          data = await view(db, request.data);
+          break;
+        case 'detail':
+          data = await recordDetail(db, request.data.id, request.data.offset);
+          break;
+        case 'list':
+          data = await listRecords(
+            db,
+            request.data.query,
+            request.data.offset,
+            request.data.examples,
+            request.data.before,
+          );
+          break;
+        case 'pendingDeletes':
+          data = await db.jobs.where('kind').equals('delete').limit(100).toArray();
+          break;
+        case 'vocabulary':
+          data = request.data.length
+            ? await db.vocabulary.where('forms').anyOf(request.data.map(normalize)).distinct().toArray()
+            : [];
+          break;
+        case 'readingSettings': {
+          const s = await settings();
+          data = {
+            gesture: s.gesture,
+            theme: s.theme,
+            excludedLanguages: s.excludedLanguages,
+            configured: !!s.apiKey || new URL(s.baseUrl).hostname !== 'api.deepseek.com',
+          };
+          break;
+        }
+        case 'settings':
+          data = await settings();
+          break;
+        case 'saveSettings': {
+          const before = await settings();
+          if (JSON.stringify(before) !== JSON.stringify(request.data)) {
             await browser.storage.local.set({ settings: request.data });
-            await db.jobs
-              .filter((j) => j.kind === 'generate' || !j.blocked)
-              .modify({ nextAt: 0, blocked: false });
-            wake();
-            break;
-          case 'models':
-            data = await availableModels(request.data);
-            break;
-          case 'testAnki':
-            data = await new Anki({ ...request.data, deck: '' }).testConnection();
-            break;
-          case 'testModel': {
-            const started = Date.now();
-            await explain(request.data, {
+            change = { settings: true };
+          }
+          break;
+        }
+        case 'models':
+          data = await availableModels(request.data, signal);
+          break;
+        case 'testAnki':
+          data = await new Anki({ ...request.data, deck: '' }).testConnection(signal);
+          break;
+        case 'testModel': {
+          const started = Date.now();
+          await explain(
+            request.data,
+            {
               url: 'https://example.org/',
               title: '',
               sentence: 'She was reluctant to ask for help.',
               start: 8,
               end: 17,
               location: '',
-            });
-            data = { elapsedMs: Date.now() - started };
-            break;
-          }
-          case 'open':
-            await browser.runtime.openOptionsPage();
-            break;
-          case 'list': {
-            const captures = await db.captures.orderBy('createdAt').reverse().toArray();
-            const records = await Promise.all(captures.filter((c) => !c.deleted).map((c) => view(db, c.id)));
-            // Removing the last source must not hide the surviving learning entry.
-            for (const entry of await db.entries.toArray()) {
-              if (entry.deleted || records.some((r) => r?.entry?.id === entry.id)) continue;
-              const source = captures.find((c) => c.entryId === entry.id);
-              if (source) records.push(await view(db, source.id, true));
-            }
-            data = { records: records.filter(Boolean), jobs: await db.jobs.toArray() };
-            break;
-          }
-          case 'state':
-            await db.vocabulary.update(request.data.id, { state: request.data.state });
-            break;
-          case 'retry': {
-            await db.jobs.update(request.data, {
+            },
+            signal,
+          );
+          data = { elapsedMs: Date.now() - started };
+          break;
+        }
+        case 'open':
+          await browser.runtime.openOptionsPage();
+          break;
+        case 'state':
+          await db.vocabulary.update(request.data.id, { state: request.data.state });
+          change = { records: true, vocabulary: true };
+          break;
+        case 'retry': {
+          const job = await db.jobs.get(request.data);
+          if (job && job.leaseUntil > Date.now()) throw new Error('任务正在进行');
+          if (job)
+            await db.jobs.update(job.id, {
               nextAt: 0,
               leaseUntil: 0,
               blocked: false,
+              attempts: 0,
+              error: undefined,
               token: crypto.randomUUID(),
             });
-            wake();
-            break;
-          }
-          case 'remove':
-            await removeEntry(db, request.data.id, request.data.anki);
-            wake();
-            break;
-          case 'removeSource':
-            await db.transaction('rw', db.captures, db.jobs, async () => {
-              const c = await db.captures.get(request.data);
-              await db.captures.update(request.data, { deleted: true });
-              await db.jobs.delete(`generate:${request.data}`);
-              if (c?.entryId) await queue(db, 'export', c.entryId);
-            });
-            wake();
-            break;
-          case 'edit': {
-            const entry = await db.entries.get(request.data.id);
-            if (!entry || entry.deleted) throw new Error('该条目已删除');
-            const old = await db.generations.get(entry.generationId);
-            const c = old && (await db.captures.get(old.captureId));
-            if (!c) throw new Error('未找到原始语境');
-            const material = validateMaterial(request.data.material, c.source);
-            if (material.language !== old!.material.language || material.lemma !== old!.material.lemma)
-              throw new Error('编辑仅用于纠正释义与例句');
-            await db.transaction('rw', db.generations, db.entries, db.jobs, async () => {
-              const id = crypto.randomUUID();
-              await db.generations.add({ id, captureId: c.id, material, createdAt: Date.now() });
-              await db.entries.update(entry.id, { generationId: id });
-              await queue(db, 'export', entry.id);
-            });
-            wake();
-            break;
-          }
+          change = { records: true };
+          runJobs = true;
+          break;
         }
-        return { ok: true, data };
-      } catch (error) {
-        return {
-          ok: false,
-          error: error instanceof Error && error.name !== 'ZodError' ? error.message : '输入内容不符合要求',
-        };
+        case 'remove':
+          await removeEntry(db, request.data.id, request.data.anki);
+          change = { records: true };
+          runJobs = true;
+          break;
+        case 'removeSource':
+          await removeSource(db, request.data);
+          change = { records: true };
+          runJobs = true;
+          break;
+        case 'edit':
+          await editMaterial(db, request.data.id, request.data.material);
+          change = { records: true };
+          runJobs = true;
+          break;
       }
-    })();
+      if (change) notify(change);
+      if (runJobs) void wake();
+      return { ok: true, data };
+    } catch (error) {
+      return {
+        ok: false,
+        error:
+          error instanceof Error && error.name !== 'ZodError' ? error.message : '输入或返回内容不符合要求',
+      };
+    }
+  };
+  browser.runtime.onMessage.addListener((raw, sender) => handle(raw, sender));
+  browser.runtime.onConnect.addListener((port) => {
+    if (port.sender?.id !== browser.runtime.id) {
+      port.disconnect();
+      return;
+    }
+    if (port.name === 'changes') {
+      subscribers.add(port);
+      void browser.storage.session.get('changeRevision').then((stored) => {
+        if (subscribers.has(port))
+          port.postMessage({ initial: true, revision: stored.changeRevision ?? 'initial' });
+      });
+      port.onDisconnect.addListener(() => subscribers.delete(port));
+    } else if (port.name === 'request') {
+      const controller = new AbortController();
+      port.onDisconnect.addListener(() => controller.abort());
+      port.onMessage.addListener((request) => {
+        void handle(request, port.sender ?? {}, controller.signal).then((result) => {
+          if (!controller.signal.aborted) port.postMessage(result);
+        });
+      });
+    } else port.disconnect();
   });
-  wake();
+  void wake();
 });

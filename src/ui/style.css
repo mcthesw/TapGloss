@@ -194,127 +194,98 @@ summary {
   max-height: 90vh;
   overflow: auto;
 }
-.record-footer {
-  border-top: 1px solid var(--border);
-}
-.record-actions {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-.record-actions button {
-  min-height: 36px;
-}
-.record-actions svg {
-  width: 18px;
-  height: 18px;
-}
-.compact-records {
+/* Record lists carry summaries only; one modal owns all detailed actions. */
+.word-list {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 8px 16px;
+  gap: 6px 14px;
 }
-.record-compact {
-  width: fit-content;
+.word-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  padding: 6px 4px;
+  background: transparent;
+  font-size: 14px;
   max-width: 100%;
-  min-width: 0;
-  padding: 4px 6px;
-  border-radius: 6px;
+  text-align: left;
 }
-.record-compact:hover,
-.record-compact:focus-within {
-  background: var(--hover);
+.word-title {
+  overflow-wrap: anywhere;
+  font-weight: 600;
 }
-.record-compact.is-expanded {
-  width: 420px;
-  background: var(--surface);
-  padding: 8px 12px;
+.word-state {
+  color: var(--muted);
+  font-size: 11px;
 }
-.record-heading {
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.summary-item {
+  display: block;
+  text-align: left;
+  padding: 16px;
+}
+.summary-gloss,
+.summary-example {
+  display: block;
+  margin-top: 8px;
+}
+.summary-example {
+  font-size: 14px;
+}
+.empty-records {
+  padding: 40px 0;
+}
+.empty-records h2 {
+  margin-bottom: 12px;
+}
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 24px;
+}
+.detail-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  margin-bottom: 12px;
 }
-.record-heading h2 {
+.detail-heading h2 {
   overflow-wrap: anywhere;
 }
-.record-details {
-  margin: 8px 4px 6px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-.record-compact .record-heading {
-  gap: 6px;
-  min-height: 30px;
-  width: max-content;
-  max-width: 100%;
-}
-.record-toggle {
+.detail-actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.detail-status {
+  margin: 16px 0 0;
+}
+.detail-actions button[aria-pressed='true'] {
+  background: var(--mark);
+}
+.source-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
   align-items: center;
-  gap: 7px;
-  padding: 3px 2px;
-  border: 0;
-  background: transparent;
-  min-width: 0;
-  flex: 1;
-  text-align: left;
-  font-size: 14px;
-  font-weight: 600;
 }
-.record-toggle:hover {
-  background: transparent;
+.source-actions a {
+  overflow-wrap: anywhere;
+  font-size: 12px;
 }
-.record-toggle span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.record-toggle svg {
+.source-actions button {
   flex-shrink: 0;
-  width: 13px;
-  height: 13px;
-  color: var(--muted);
-}
-.record-toggle svg.expanded {
-  transform: rotate(90deg);
-}
-.record-compact .record-actions {
-  flex-shrink: 0;
-  gap: 3px;
-}
-.record-compact .record-actions button {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  min-height: 26px;
-  padding: 4px;
-  border-radius: 5px;
-  border: 0;
-  background: transparent;
-}
-.record-compact .record-actions button:hover {
-  background: var(--mark);
-}
-.record-compact .record-actions svg {
-  width: 14px;
-  height: 14px;
-}
-.record-indicator {
-  font-size: 16px;
-}
-.record-compact .example {
-  font-size: 14px;
-  line-height: 1.65;
-}
-
-.record-actions button[aria-pressed='true'] {
-  background: var(--mark);
-  border-color: var(--accent);
-  color: var(--accent);
+  font-size: 12px;
 }
 .view-switch {
   display: flex;

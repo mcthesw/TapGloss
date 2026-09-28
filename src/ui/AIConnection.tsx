@@ -8,13 +8,16 @@ import { Select } from './Select';
 export function AIConnection({
   value,
   change,
+  active = true,
 }: {
   value: Settings;
+  active?: boolean;
   change: (patch: Partial<Settings>) => void;
 }) {
   const [models, setModels] = useState<string[]>([]);
   const [promptText, setPromptText] = useState(value.prompt || defaultPrompt);
-  const modelEdited = useRef(value.model !== 'deepseek-flash');
+  const discovery = useRef<AbortController>();
+  const testingRequest = useRef<AbortController>();
   const [loading, setLoading] = useState(false),
     [testing, setTesting] = useState(false);
   const [modelNotice, setModelNotice] = useState(''),
@@ -26,19 +29,15 @@ export function AIConnection({
   const fetchModels = async () => {
     const id = ++sequence.current;
     const requested = current.current;
+    discovery.current?.abort();
+    const controller = new AbortController();
+    discovery.current = controller;
     setLoading(true);
     setModelNotice('');
     try {
-      const found = await send({ type: 'models', data: requested });
+      const found = await send({ type: 'models', data: requested }, controller.signal);
       if (id !== sequence.current) return;
       setModels(found);
-      if (
-        !modelEdited.current &&
-        found.length &&
-        !found.includes(current.current.model) &&
-        current.current.model === requested.model
-      )
-        change({ model: found.find((model) => /flash|mini|small/i.test(model)) ?? found[0]! });
       setModelNotice(found.length ? `已获取 ${found.length} 个模型` : '未找到模型，可以手动填写名称。');
     } catch (error) {
       if (id === sequence.current)
@@ -51,22 +50,29 @@ export function AIConnection({
     setModels([]);
     setModelNotice('');
     setLoading(false);
-    const timer = setTimeout(() => {
-      if (/^https?:\/\//.test(value.baseUrl) && (value.apiKey || !value.baseUrl.includes('api.deepseek.com')))
-        void fetchModels();
-    }, 800);
+    discovery.current?.abort();
+    sequence.current++;
     return () => {
-      clearTimeout(timer);
+      discovery.current?.abort();
       sequence.current++;
     };
   }, [value.baseUrl, value.apiKey]);
   useEffect(() => {
+    if (!active) {
+      discovery.current?.abort();
+      sequence.current++;
+      setLoading(false);
+    }
+  }, [active]);
+  useEffect(() => {
+    testingRequest.current?.abort();
     setTestNotice('');
     setTesting(false);
     testSequence.current++;
-  }, [value.baseUrl, value.apiKey, value.model, value.prompt]);
+  }, [value.baseUrl, value.apiKey, value.model, value.prompt, active]);
   useEffect(
     () => () => {
+      testingRequest.current?.abort();
       testSequence.current++;
     },
     [],
@@ -103,23 +109,25 @@ export function AIConnection({
         value={value.model}
         options={models.map((model) => ({ value: model, label: model }))}
         change={(model) => {
-          modelEdited.current = true;
           change({ model });
         }}
       />
       <div class="connection-actions">
         <button type="button" disabled={loading} onClick={() => void fetchModels()}>
-          {loading ? '正在获取…' : '刷新模型'}
+          {loading ? '正在获取…' : '获取模型'}
         </button>
         <button
           type="button"
           disabled={testing || loading}
           onClick={async () => {
             const id = ++testSequence.current;
+            testingRequest.current?.abort();
+            const controller = new AbortController();
+            testingRequest.current = controller;
             setTesting(true);
             setTestNotice('');
             try {
-              const result = await send({ type: 'testModel', data: value });
+              const result = await send({ type: 'testModel', data: value }, controller.signal);
               if (id === testSequence.current)
                 setTestNotice(`连接正常 · 例句生成通过（${(result.elapsedMs / 1000).toFixed(1)} 秒）`);
             } catch (error) {

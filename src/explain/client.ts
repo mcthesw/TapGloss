@@ -13,8 +13,9 @@ import {
 export function apiUrl(base: string, resource: string) {
   return `${base.replace(/\/+$/, '').replace(/\/chat\/completions$/, '')}/${resource}`;
 }
+type ModelSettings = Pick<Settings, 'baseUrl' | 'apiKey' | 'model' | 'prompt'>;
 async function request(
-  settings: Settings,
+  settings: ModelSettings,
   system: string,
   input: unknown,
   signal?: AbortSignal,
@@ -53,7 +54,7 @@ async function request(
     throw new Error('模型未返回有效的结构化结果，请重试');
   }
 }
-export async function explain(settings: Settings, source: Source, signal?: AbortSignal) {
+export async function explain(settings: ModelSettings, source: Source, signal?: AbortSignal) {
   return validateMaterial(
     await request(
       settings,
@@ -89,7 +90,7 @@ export async function matchSense(settings: Settings, material: Material, entries
   );
   return candidates.find((e) => e.id === result.id);
 }
-export async function availableModels(settings: Settings, signal?: AbortSignal) {
+export async function availableModels(settings: Pick<Settings, 'baseUrl' | 'apiKey'>, signal?: AbortSignal) {
   const response = await fetchService(
     apiUrl(settings.baseUrl, 'models'),
     {

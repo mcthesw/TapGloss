@@ -1,21 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { send } from '../messages';
+import { send, subscribeChanges } from '../messages';
 import { vocabularyId, type RecordView, type Source } from '../domain/model';
 import { Examples } from './Material';
 
-export function Lookup({
-  source,
-  x,
-  y,
-  close,
-  refresh,
-}: {
-  source: Source;
-  x: number;
-  y: number;
-  close: () => void;
-  refresh: () => void;
-}) {
+export function Lookup({ source, x, y, close }: { source: Source; x: number; y: number; close: () => void }) {
   const [record, setRecord] = useState<RecordView>();
   const [error, setError] = useState('');
   const root = useRef<HTMLElement>(null);
@@ -38,34 +26,33 @@ export function Lookup({
     };
   }, [x, y]);
   useEffect(() => {
-    let cancelled = false,
-      timer: ReturnType<typeof setTimeout>;
+    let disposed = false,
+      sequence = 0,
+      id: string | undefined;
+    const read = async () => {
+      if (!id) return;
+      const seq = ++sequence;
+      try {
+        const next = await send({ type: 'read', data: id });
+        if (!disposed && seq === sequence) setRecord(next);
+      } catch {
+        if (!disposed) setError('连接已断开，请刷新页面');
+      }
+    };
+    const unsubscribe = subscribeChanges((change) => {
+      if (change.initial || change.records) void read();
+    });
     void send({ type: 'lookup', data: source })
-      .then(async (id) => {
-        const poll = async () => {
-          if (cancelled) return;
-          try {
-            const next = await send({ type: 'read', data: id });
-            if (!cancelled) {
-              setRecord(next);
-              refresh();
-            }
-          } catch {
-            if (!cancelled) setError('连接已断开，请刷新页面');
-          }
-          if (!cancelled)
-            timer = setTimeout(() => {
-              void poll();
-            }, 1500);
-        };
-        await poll();
+      .then((value) => {
+        id = value;
+        if (!disposed) void read();
       })
       .catch((e: Error) => {
-        if (!cancelled) setError(e.message);
+        if (!disposed) setError(e.message);
       });
     return () => {
-      cancelled = true;
-      clearTimeout(timer);
+      disposed = true;
+      unsubscribe();
     };
   }, []);
   const material = record?.generation?.material;
@@ -120,7 +107,6 @@ export function Lookup({
                   },
                 });
                 setRecord({ ...record, state: record.state === 'known' ? 'learning' : 'known' });
-                refresh();
               } catch {
                 setError('暂时无法保存状态');
               }

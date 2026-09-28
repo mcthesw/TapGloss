@@ -102,7 +102,7 @@
     10px/1.6 ui-monospace,
     monospace;
 }
-.lookup .lookup-examples mark {
+.lookup-examples .example mark {
   background: none;
   padding: 0;
   font-weight: 650;

@@ -1,12 +1,9 @@
 import { render } from 'preact';
 import { defineContentScript } from 'wxt/utils/define-content-script';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
-import { send } from '../src/messages';
-import { normalize } from '../src/domain/model';
+import { send, subscribeChanges } from '../src/messages';
 import { rangeAtPoint, sourceFromRange } from '../src/page/selection';
-import { highlightPage } from '../src/page/highlight';
-import { languageFilter } from '../src/page/languages';
-import { browser } from 'wxt/browser';
+import { createHighlighter } from '../src/page/highlight';
 import { applyTheme } from '../src/ui/theme';
 import { Lookup } from '../src/ui/Lookup';
 import '../src/ui/style.css';
@@ -15,9 +12,10 @@ export default defineContentScript({
   matches: ['http://*/*', 'https://*/*'],
   cssInjectionMode: 'ui',
   async main(ctx) {
-    let config = await send({ type: 'vocabulary' });
+    let config = await send({ type: 'readingSettings' });
     let container: HTMLElement,
-      opened = false;
+      opened = false,
+      clickSequence = 0;
     const ui = await createShadowRootUi(ctx, {
       name: 'tap-gloss',
       position: 'inline',
@@ -47,23 +45,31 @@ export default defineContentScript({
     style.textContent =
       '::highlight(tapgloss-new){background-color:#88888820}::highlight(tapgloss-learning){background-color:#dcc46860}';
     document.head.append(style);
-    let snapshot = '',
-      scheduled = false;
-    const refresh = async () => {
-      const next = await send({ type: 'vocabulary' });
-      config = next;
+    const highlighter = createHighlighter(
+      (forms) => send({ type: 'vocabulary', data: forms }),
+      config.excludedLanguages,
+    );
+    let lastExclusions = JSON.stringify(config.excludedLanguages);
+    const refreshSettings = async () => {
+      config = await send({ type: 'readingSettings' });
       updateTheme();
-      const serialized = JSON.stringify([next.words, next.excludedLanguages]);
-      if (serialized !== snapshot) {
-        snapshot = serialized;
-        highlightPage(next.words, next.excludedLanguages);
+      const next = JSON.stringify(config.excludedLanguages);
+      if (next !== lastExclusions) {
+        lastExclusions = next;
+        highlighter.refresh(config.excludedLanguages);
       }
     };
+    const unsubscribe = subscribeChanges((change) => {
+      if (change.settings || change.initial) void refreshSettings().catch(() => {});
+      if (change.vocabulary || change.initial) highlighter.refresh();
+    });
     const close = () => {
+      clickSequence++;
       render(null, container);
       opened = false;
     };
     const query = (range: Range, x: number, y: number) => {
+      clickSequence++;
       const source = sourceFromRange(range);
       if (!source) return;
       if (!config.configured) {
@@ -80,34 +86,19 @@ export default defineContentScript({
           x={x}
           y={y}
           close={close}
-          refresh={() => {
-            void refresh().catch(() => {});
-          }}
         />,
         container,
       );
     };
-    ctx.addEventListener(document, 'click', (e) => {
+    ctx.addEventListener(document, 'click', async (e) => {
       if (!e.isTrusted || e.button !== 0 || e.composedPath().includes(ui.shadowHost)) return;
-      if (opened) {
-        close();
-        return;
-      }
+      if (opened) close();
+      const sequence = ++clickSequence;
       if (config.gesture === 'alt' && !e.altKey) return;
       if (e.ctrlKey || e.metaKey || e.shiftKey || !getSelection()?.isCollapsed) return;
       const range = rangeAtPoint(e.clientX, e.clientY);
-      if (
-        !range ||
-        config.words.some((w) => w.state === 'known' && w.forms.includes(normalize(range.toString())))
-      )
-        return;
-      if (
-        languageFilter(config.excludedLanguages)(
-          range.startContainer as Text,
-          range.toString(),
-          range.startOffset,
-        )
-      )
+      if (!range || highlighter.ignored(range)) return;
+      if ((await highlighter.known(range)) || sequence !== clickSequence || !range.startContainer.isConnected)
         return;
       query(range, e.clientX, e.clientY);
     });
@@ -121,35 +112,12 @@ export default defineContentScript({
       e.preventDefault();
       query(range, rect.left, rect.bottom);
     });
-    const observer = new MutationObserver(() => {
-      if (scheduled) return;
-      scheduled = true;
-      ctx.setTimeout(() => {
-        scheduled = false;
-        highlightPage(config.words, config.excludedLanguages);
-      }, 500);
-    });
-    observer.observe(document.documentElement, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-      attributes: true,
-      attributeFilter: ['lang'],
-    });
-    ctx.addEventListener(window, 'focus', () => {
-      void refresh().catch(() => {});
-    });
-    const settingsChanged = (changes: Record<string, unknown>, area: string) => {
-      if (area === 'local' && changes.settings) void refresh().catch(() => {});
-    };
-    browser.storage.onChanged.addListener(settingsChanged);
     ctx.onInvalidated(() => {
-      observer.disconnect();
-      browser.storage.onChanged.removeListener(settingsChanged);
+      unsubscribe();
+      highlighter.dispose();
       themeObserver.disconnect();
       media.removeEventListener('change', updateTheme);
       style.remove();
     });
-    await refresh();
   },
 });

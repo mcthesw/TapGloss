@@ -11,10 +11,12 @@ export function Settings({
   initial,
   saved,
   actions,
+  active = true,
 }: {
   initial: Configuration;
   saved: (s: Configuration) => void;
   actions: HTMLElement | null;
+  active?: boolean;
 }) {
   const [value, setValue] = useState(initial),
     [busy, setBusy] = useState(false);
@@ -23,15 +25,27 @@ export function Settings({
   const [ankiBusy, setAnkiBusy] = useState(false),
     [ankiNotice, setAnkiNotice] = useState(''),
     [ankiFailed, setAnkiFailed] = useState(false);
+  const ankiRequest = useRef<AbortController>();
   const ankiSequence = useRef(0);
   useEffect(() => {
+    ankiRequest.current?.abort();
     setAnkiNotice('');
     setAnkiBusy(false);
     ankiSequence.current++;
     return () => {
+      ankiRequest.current?.abort();
       ankiSequence.current++;
     };
-  }, [value.ankiUrl, value.ankiKey]);
+  }, [value.ankiUrl, value.ankiKey, active]);
+  useEffect(() => {
+    const dirty = JSON.stringify(value) !== JSON.stringify(initial);
+    const leave = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    if (dirty) window.addEventListener('beforeunload', leave);
+    return () => window.removeEventListener('beforeunload', leave);
+  }, [value, initial]);
   const revision = useRef(0);
   const change = (patch: Partial<Configuration>) => {
     revision.current++;
@@ -88,7 +102,7 @@ export function Settings({
       )}
       <div class="settings-columns">
         <div class="settings-column">
-          <AIConnection value={value} change={change} />
+          <AIConnection value={value} change={change} active={active} />
         </div>
         <div class="settings-column">
           <section class="paper space-y-5">
@@ -163,11 +177,17 @@ export function Settings({
               disabled={ankiBusy}
               onClick={async () => {
                 const id = ++ankiSequence.current;
+                ankiRequest.current?.abort();
+                const controller = new AbortController();
+                ankiRequest.current = controller;
                 setAnkiBusy(true);
                 setAnkiNotice('');
                 setAnkiFailed(false);
                 try {
-                  await send({ type: 'testAnki', data: { ankiUrl: value.ankiUrl, ankiKey: value.ankiKey } });
+                  await send(
+                    { type: 'testAnki', data: { ankiUrl: value.ankiUrl, ankiKey: value.ankiKey } },
+                    controller.signal,
+                  );
                   if (id === ankiSequence.current) setAnkiNotice('Anki 连接正常');
                 } catch (error) {
                   if (id === ankiSequence.current) {

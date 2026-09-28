@@ -1,4 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie';
+import type { CatalogRow } from '../domain/records';
+import { buildCatalog, captureRow } from './catalog';
 import {
   captureId,
   vocabularyId,
@@ -17,6 +19,7 @@ export class Database extends Dexie {
   generations!: EntityTable<Generation, 'id'>;
   vocabulary!: EntityTable<Vocabulary, 'id'>;
   jobs!: EntityTable<Job, 'id'>;
+  catalog!: EntityTable<CatalogRow, 'id'>;
   constructor(name = 'TapGloss') {
     super(name);
     this.version(1).stores({
@@ -46,6 +49,13 @@ export class Database extends Dexie {
             });
         }
       });
+    this.version(3)
+      .stores({
+        catalog: 'id,entryId,[createdAt+id],*tokens',
+        vocabulary: 'id,*forms',
+        jobs: 'id,nextAt,kind',
+      })
+      .upgrade(buildCatalog);
   }
 }
 export function queue(db: Database, kind: Job['kind'], ref: string) {
@@ -61,16 +71,18 @@ export function queue(db: Database, kind: Job['kind'], ref: string) {
 }
 export async function capture(db: Database, source: Source) {
   const id = await captureId(source);
-  await db.transaction('rw', db.captures, db.entries, db.jobs, async () => {
+  await db.transaction('rw', db.captures, db.entries, db.jobs, db.catalog, async () => {
     const previous = await db.captures.get(id);
     if (previous && !previous.deleted) return;
     const entry = previous?.entryId ? await db.entries.get(previous.entryId) : undefined;
-    await db.captures.put({
+    const next: Capture = {
       id,
       source,
       createdAt: Date.now(),
       restoreToken: entry?.deleted ? entry.deleteToken : undefined,
-    });
+    };
+    await db.captures.put(next);
+    await db.catalog.put(captureRow(next));
     await queue(db, 'generate', id);
   });
   return id;
@@ -89,11 +101,12 @@ export async function view(
   return { capture: c, entry, generation, job, state: word?.state };
 }
 export async function removeEntry(db: Database, id: string, deleteAnki: boolean) {
-  await db.transaction('rw', db.entries, db.captures, db.jobs, async () => {
+  await db.transaction('rw', db.entries, db.captures, db.jobs, db.catalog, async () => {
     if (!(await db.entries.get(id))) return;
     await db.entries.update(id, { deleted: true, deletedAt: Date.now(), deleteToken: crypto.randomUUID() });
     await db.captures.where('entryId').equals(id).modify({ deleted: true });
     await db.jobs.delete(`export:${id}`);
+    await db.catalog.delete(`entry:${id}`);
     if (deleteAnki) await queue(db, 'delete', id);
   });
 }

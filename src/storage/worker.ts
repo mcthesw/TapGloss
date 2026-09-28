@@ -2,12 +2,15 @@ import { hash, normalize, vocabularyId, type Job, type Settings, type Entry } fr
 import { Anki, noteFields } from '../anki/client';
 import { explain, matchSense } from '../explain/client';
 import { Database, queue } from './database';
+import { updateCatalog } from './catalog';
+import { ServiceFailure } from '../domain/failure';
 
 export class Worker {
   private running?: Promise<void>;
   constructor(
     private db: Database,
     private settings: () => Promise<Settings>,
+    private changed: (vocabulary: boolean) => void = () => {},
   ) {}
   run() {
     return (this.running ??= this.drain().finally(() => {
@@ -16,20 +19,23 @@ export class Worker {
   }
   private async claim() {
     return this.db.transaction('rw', this.db.jobs, async () => {
-      const job = (await this.db.jobs.orderBy('nextAt').toArray()).find(
-        (j) => !j.blocked && j.nextAt <= Date.now() && j.leaseUntil <= Date.now(),
-      );
+      const job = await this.db.jobs
+        .where('nextAt')
+        .belowOrEqual(Date.now())
+        .filter((j) => !j.blocked && j.leaseUntil <= Date.now())
+        .first();
       if (job) await this.db.jobs.update(job.id, { leaseUntil: Date.now() + 180000 });
       return job;
     });
   }
   private async drain() {
+    const prepared = new Set<string>();
     let job: Job | undefined;
     while ((job = await this.claim())) {
       try {
         const settings = await this.settings();
         if (job.kind === 'generate') await this.generate(job, settings);
-        else await this.export(job, settings);
+        else await this.export(job, settings, prepared);
         await this.db.transaction('rw', this.db.jobs, async () => {
           if ((await this.db.jobs.get(job!.id))?.token === job!.token) await this.db.jobs.delete(job!.id);
         });
@@ -44,11 +50,15 @@ export class Worker {
             error: message,
             attempts: job!.attempts + 1,
             leaseUntil: 0,
-            blocked: /修改|归属|重复|不兼容|密钥|设置|已移除|条目已删除/.test(message),
-            nextAt: Date.now() + Math.min(3600000, 60000 * 2 ** Math.min(job!.attempts, 6)),
+            blocked: !(error instanceof ServiceFailure && error.retryable && job!.attempts < 4),
+            nextAt:
+              error instanceof ServiceFailure && error.retryable && job!.attempts < 4
+                ? Date.now() + Math.min(3600000, 60000 * 2 ** job!.attempts)
+                : Number.MAX_SAFE_INTEGER,
           });
         });
       }
+      this.changed(job.kind === 'generate');
     }
   }
   private async generate(job: Job, settings: Settings) {
@@ -68,11 +78,14 @@ export class Worker {
     };
     await this.db.transaction(
       'rw',
-      this.db.captures,
-      this.db.generations,
-      this.db.entries,
-      this.db.vocabulary,
-      this.db.jobs,
+      [
+        this.db.captures,
+        this.db.generations,
+        this.db.entries,
+        this.db.vocabulary,
+        this.db.jobs,
+        this.db.catalog,
+      ],
       async () => {
         if (
           (await this.db.captures.get(c.id))?.deleted ||
@@ -94,6 +107,8 @@ export class Worker {
         await this.db.generations.add(generation);
         await this.db.entries.put(entry);
         await this.db.captures.update(c.id, { entryId: entry.id });
+        await this.db.catalog.delete(`capture:${c.id}`);
+        await updateCatalog(this.db, entry.id);
         const id = vocabularyId(entry.language, entry.lemma);
         const old = await this.db.vocabulary.get(id);
         const forms = [
@@ -110,7 +125,7 @@ export class Worker {
       },
     );
   }
-  private async export(job: Job, settings: Settings) {
+  private async export(job: Job, settings: Settings, prepared: Set<string>) {
     const entry = await this.db.entries.get(job.ref);
     if (!entry || (job.kind === 'export' && entry.deleted)) return;
     const anki = new Anki(settings);
@@ -131,7 +146,11 @@ export class Worker {
     );
     const values = noteFields(entry, generation.material, captures);
     const nextHash = await hash(values);
-    await anki.setup();
+    const connection = JSON.stringify([settings.ankiUrl, settings.ankiKey, settings.deck]);
+    if (!prepared.has(connection)) {
+      await anki.setup();
+      prepared.add(connection);
+    }
     const note = await anki.find(entry);
     if (note) {
       const currentHash = await anki.fieldHash(note);

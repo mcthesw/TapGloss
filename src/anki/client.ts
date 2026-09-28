@@ -1,6 +1,7 @@
 import { cardStyle, legacyCardStyle } from './template';
 import { z } from 'zod';
 import { hash, type Capture, type Entry, type Material, type Settings } from '../domain/model';
+import { fetchService, httpFailure } from '../domain/failure';
 
 export const modelName = 'TapGloss';
 const fields = ['TapGlossId', 'Text', 'Extra'];
@@ -37,19 +38,19 @@ const noteSchema = z.object({
 type Note = z.infer<typeof noteSchema>;
 export class Anki {
   constructor(private settings: Pick<Settings, 'ankiUrl' | 'ankiKey' | 'deck'>) {}
-  async testConnection() {
-    const version = z.number().parse(await this.call('version'));
+  async testConnection(signal?: AbortSignal) {
+    const version = z.number().parse(await this.call('version', {}, signal));
     if (version < 6) throw new Error('请更新 AnkiConnect 后重试');
     // Check authenticated access without creating or changing any Anki data.
-    await this.call('deckNames');
+    await this.call('deckNames', {}, signal);
     return { version };
   }
-  async call(action: string, params: unknown = {}): Promise<unknown> {
-    let response: Response;
-    try {
-      response = await fetch(this.settings.ankiUrl, {
+  async call(action: string, params: unknown = {}, signal?: AbortSignal): Promise<unknown> {
+    const response = await fetchService(
+      this.settings.ankiUrl,
+      {
         method: 'POST',
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.any([AbortSignal.timeout(10000), ...(signal ? [signal] : [])]),
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action,
@@ -57,11 +58,10 @@ export class Anki {
           params,
           ...(this.settings.ankiKey ? { key: this.settings.ankiKey } : {}),
         }),
-      });
-    } catch {
-      throw new Error('等待 Anki：请打开 Anki 并启用 AnkiConnect');
-    }
-    if (!response.ok) throw new Error(`Anki 连接失败（${response.status}）`);
+      },
+      '等待 Anki：请打开 Anki 并启用 AnkiConnect',
+    );
+    if (!response.ok) throw httpFailure('Anki', response.status);
     const body = z.object({ result: z.unknown(), error: z.string().nullable() }).parse(await response.json());
     if (body.error) throw new Error('Anki 未完成操作，请检查 AnkiConnect 权限与牌组设置');
     return body.result;

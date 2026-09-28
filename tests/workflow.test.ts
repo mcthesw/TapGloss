@@ -51,6 +51,23 @@ describe('durable reading → Anki workflow', () => {
     expect(services.counts().adds).toBe(1);
     expect((await db.entries.toArray())[0]?.noteId).toBe(1);
   });
+  it('pauses permanent model errors and bounds retries for temporary failures', async () => {
+    vi.stubGlobal('fetch', async () => Response.json({}, { status: 400 }));
+    await capture(db, source);
+    await run();
+    expect((await db.jobs.toArray())[0]?.blocked).toBe(true);
+    await db.jobs.clear();
+    await db.captures.clear();
+    vi.stubGlobal('fetch', async () => Response.json({}, { status: 503 }));
+    await capture(db, source);
+    for (let i = 0; i < 5; i++) {
+      await db.jobs.toCollection().modify({ nextAt: 0 });
+      await run();
+    }
+    const job = (await db.jobs.toArray())[0]!;
+    expect(job.attempts).toBe(5);
+    expect(job.blocked).toBe(true);
+  });
   it('keeps generated material when Anki is offline and resumes after restart', async () => {
     services.offline(true);
     const id = await capture(db, source);

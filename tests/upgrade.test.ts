@@ -55,6 +55,7 @@ it('upgrades stored notes in place while preserving deleted entries and blocked 
   vi.stubGlobal('fetch', services.fetcher);
   try {
     await db.open();
+    expect(await db.catalog.count()).toBe(2);
     expect((await db.jobs.toArray()).map((j) => j.id).sort()).toEqual(['export:blocked', 'export:owned']);
     await new Worker(db, async () => settings).run();
     expect(services.notes.size).toBe(1);

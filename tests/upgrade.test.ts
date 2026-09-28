@@ -60,7 +60,8 @@ it('upgrades stored notes in place while preserving deleted entries and blocked 
     await new Worker(db, async () => settings).run();
     expect(services.notes.size).toBe(1);
     expect(services.counts().adds).toBe(0);
-    expect((await db.entries.get('owned'))?.noteId).toBe(1);
+    expect((await db.ankiBindings.get('owned'))?.noteId).toBe(1);
+    expect(await db.entries.get('owned')).not.toHaveProperty('noteId');
     expect((await db.entries.get('deleted'))?.deleted).toBe(true);
     expect((await db.jobs.get('export:blocked'))?.token).toBe('original');
     expect(services.notes.get(1)?.fields.Extra).toContain('<details>');

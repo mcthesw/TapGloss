@@ -49,7 +49,7 @@ describe('durable reading → Anki workflow', () => {
     await db.jobs.toCollection().modify({ nextAt: 0 });
     await run();
     expect(services.counts().adds).toBe(1);
-    expect((await db.entries.toArray())[0]?.noteId).toBe(1);
+    expect((await db.ankiBindings.toArray())[0]?.noteId).toBe(1);
   });
   it('pauses permanent model errors and bounds retries for temporary failures', async () => {
     vi.stubGlobal('fetch', async () => Response.json({}, { status: 400 }));

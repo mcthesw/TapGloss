@@ -105,10 +105,11 @@ export async function listRecords(
     .limit(pageSize + 1)
     .toArray();
   const rows = found.slice(0, pageSize);
-  const [entries, words, jobs] = await Promise.all([
+  const [entries, words, jobs, bindings] = await Promise.all([
     db.entries.bulkGet(rows.map((r) => r.entryId ?? '')),
     db.vocabulary.bulkGet(rows.map((r) => vocabularyId(r.language ?? '', r.term))),
     db.jobs.bulkGet(rows.map((r) => (r.entryId ? `export:${r.entryId}` : `generate:${r.captureId}`))),
+    db.ankiBindings.bulkGet(rows.map((r) => r.entryId ?? '')),
   ]);
   const generations = examples ? await db.generations.bulkGet(entries.map((e) => e?.generationId ?? '')) : [];
   return {
@@ -116,7 +117,7 @@ export async function listRecords(
       ...r,
       state: words[i]?.state,
       job: jobs[i],
-      exported: !!entries[i]?.noteId,
+      exported: !!bindings[i]?.noteId,
       ...(examples && generations[i] ? { examples: generations[i]!.material.examples } : {}),
     })),
     next: found.length > pageSize ? offset + pageSize : undefined,
@@ -149,8 +150,9 @@ export async function recordDetail(
     : [capture];
   const word = entry ? await db.vocabulary.get(vocabularyId(entry.language, entry.lemma)) : undefined;
   const job = await db.jobs.get(entry ? `export:${entry.id}` : `generate:${capture.id}`);
+  const binding = entry && (await db.ankiBindings.get(entry.id));
   return {
-    record: { capture, entry, generation, state: word?.state, job },
+    record: { capture, entry: entry && { ...entry, ...binding }, generation, state: word?.state, job },
     sources: sources.slice(0, 20),
     moreSources: sources.length > 20,
   };

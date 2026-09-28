@@ -1,7 +1,7 @@
 import { defineBackground } from 'wxt/utils/define-background';
 import { browser } from 'wxt/browser';
 import { settingsSchema, normalize } from '../src/domain/model';
-import { Database, capture, removeEntry, view } from '../src/storage/database';
+import { Database, capture, removeEntry, view, setVocabularyState } from '../src/storage/database';
 import { Worker } from '../src/storage/worker';
 import { requestSchema, type Change } from '../src/messages';
 import { availableModels, explain } from '../src/explain/client';
@@ -161,7 +161,7 @@ export default defineBackground(() => {
           await browser.runtime.openOptionsPage();
           break;
         case 'state':
-          await db.vocabulary.update(request.data.id, { state: request.data.state });
+          await setVocabularyState(db, request.data.id, request.data.state);
           change = { records: true, vocabulary: true };
           break;
         case 'retry': {

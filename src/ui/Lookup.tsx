@@ -62,7 +62,9 @@ export function Lookup({ source, x, y, close }: { source: Source; x: number; y: 
     (material
       ? record?.entry?.noteId && !record.job
         ? '已保存到 Anki'
-        : '已保存 · 等待 Anki'
+        : record?.job
+          ? '已保存 · 等待 Anki'
+          : '已保存'
       : '已记下，正在生成例句…');
   return (
     <section

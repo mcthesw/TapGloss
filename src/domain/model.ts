@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { languageCodes } from './languages';
+import { syncSettingsSchema, type Lifecycle } from './sync';
 
 const httpUrl = z.url().refine((s) => /^https?:\/\//.test(s), '请输入 HTTP 或 HTTPS 地址');
 export const settingsSchema = z.object({
@@ -13,6 +14,7 @@ export const settingsSchema = z.object({
   theme: z.enum(['auto', 'light', 'dark']).default('auto'),
   gesture: z.enum(['click', 'alt']).default('click'),
   excludedLanguages: z.array(z.enum(languageCodes)).max(languageCodes.length).default([]),
+  sync: syncSettingsSchema.default(() => syncSettingsSchema.parse({})),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 export const sourceSchema = z
@@ -41,15 +43,15 @@ export const materialSchema = z.object({
 });
 export type Material = z.infer<typeof materialSchema>;
 export type Generation = { id: string; captureId: string; material: Material; createdAt: number };
-export type Capture = {
+export type Capture = Lifecycle & {
   id: string;
   source: Source;
   createdAt: number;
   entryId?: string;
   deleted?: boolean;
-  restoreToken?: string;
+  restoreDeletions?: string[];
 };
-export type Entry = {
+export type Entry = Lifecycle & {
   id: string;
   language: string;
   lemma: string;
@@ -58,11 +60,8 @@ export type Entry = {
   createdAt: number;
   deleted?: boolean;
   deletedAt?: number;
-  deleteToken?: string;
-  noteId?: number;
-  syncedHash?: string;
-  pendingHash?: string;
 };
+export type AnkiBinding = { id: string; noteId?: number; syncedHash?: string; pendingHash?: string };
 export type Vocabulary = {
   id: string;
   language: string;
@@ -83,7 +82,7 @@ export type Job = {
 };
 export type RecordView = {
   capture: Capture;
-  entry?: Entry;
+  entry?: Entry & Partial<AnkiBinding>;
   generation?: Generation;
   job?: Job;
   state?: Vocabulary['state'];

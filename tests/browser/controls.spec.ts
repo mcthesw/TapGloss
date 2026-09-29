@@ -1,8 +1,9 @@
 import { test, expect, chromium } from '@playwright/test';
 import { resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 
-test('toolbar controls stop and resume live pages and preserve site preferences', async () => {
+test('toolbar controls stop and resume live pages; built-in downloads are explicit and deduplicated', async () => {
   test.setTimeout(45000);
   const server = createServer((_req, res) => {
     res.setHeader('content-type', 'text/html');
@@ -83,6 +84,35 @@ test('toolbar controls stop and resume live pages and preserve site preferences'
     expect(await count()).toBe(0);
     await popup.getByRole('button', { name: '在此网站启用' }).click();
     await expect.poll(count).toBeGreaterThan(0);
+    let requests = 0;
+    const data = readFileSync('resources/wordlists/cet4.txt', 'utf8');
+    await worker.evaluate((text) => {
+      const scope = globalThis as unknown as { downloads: number; fetch: typeof fetch };
+      scope.downloads = 0;
+      const original = fetch;
+      scope.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).endsWith('/cet4.txt')) {
+          scope.downloads++;
+          return Promise.resolve(new Response(text));
+        }
+        return original(input, init);
+      };
+    }, data);
+    const options = await c.newPage();
+    await options.goto(base + '/options.html#wordlists');
+    await options.getByRole('button', { name: '添加词表', exact: true }).click();
+    requests = await worker.evaluate(() => (globalThis as unknown as { downloads: number }).downloads);
+    expect(requests).toBe(0);
+    const row = options.locator('.builtin-row').filter({ hasText: 'CET-4' });
+    await row.getByRole('button', { name: '添加', exact: true }).click();
+    await expect(row.getByRole('button', { name: '已添加' })).toBeDisabled();
+    expect(await worker.evaluate(() => (globalThis as unknown as { downloads: number }).downloads)).toBe(1);
+    await options.screenshot({ path: 'test-results/builtin-wordlists.png' });
+    await options.getByRole('dialog').getByRole('button', { name: '关闭', exact: true }).click();
+    await expect(options.getByRole('heading', { name: 'CET-4', exact: true })).toBeVisible();
+    await options.getByRole('button', { name: '添加词表', exact: true }).click();
+    await expect(row.getByRole('button', { name: '已添加' })).toBeDisabled();
+    expect(await worker.evaluate(() => (globalThis as unknown as { downloads: number }).downloads)).toBe(1);
   } finally {
     await c.close();
     await new Promise<void>((r) => server.close(() => r()));

@@ -1,4 +1,18 @@
 export const english: Record<string, string> = {
+  添加词表: 'Add wordlist',
+  导入文件: 'Import file',
+  添加: 'Add',
+  已添加: 'Added',
+  '下载中…': 'Downloading…',
+  词表来源: 'Wordlist source',
+  '{0} 种词形': '{0} word forms',
+  '{0} 个词条': '{0} headwords',
+  'ECDICT 考试标签词表，包含中高考基础词和常见词形；六级包含四级。不代表官方大纲完整词表。':
+    'ECDICT exam-tagged lists include school vocabulary and common inflections; CET-6 includes CET-4. Not complete official syllabuses.',
+  未找到内置词表: 'Built-in wordlist not found',
+  '词表下载失败，请重试': 'Download failed. Try again.',
+  '词表校验失败，请重试': 'Wordlist verification failed. Try again.',
+
   开启: 'On',
   已暂停: 'Paused',
   在此网站启用: 'Enable on this site',

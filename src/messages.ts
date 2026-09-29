@@ -34,6 +34,10 @@ export const requestSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('readingWords'), data: z.array(z.string().max(200)).max(1000) }),
   z.object({ type: z.literal('wordlists') }),
+  z.object({
+    type: z.literal('importBuiltin'),
+    data: z.object({ id: z.string().max(30), mode: wordlistMode }),
+  }),
   z.object({ type: z.literal('importWordlist'), data: wordlistImport }),
   z.object({
     type: z.literal('changeWordlist'),
@@ -93,6 +97,7 @@ type Results = {
   readingWords: ReadingWord[];
   wordlists: Wordlist[];
   importWordlist: string;
+  importBuiltin: string;
   changeWordlist: void;
   readingControls: ReadingControls;
   changeReadingControls: ReadingControls;

@@ -6,11 +6,15 @@ import { deletion } from '../domain/sync';
 import { normalize } from '../domain/model';
 import { wordlistImport, type Wordlist, type ReadingWord } from '../domain/wordlists';
 
-export async function importWordlist(db: Database, input: z.input<typeof wordlistImport>) {
+export async function importWordlist(
+  db: Database,
+  input: z.input<typeof wordlistImport>,
+  id = crypto.randomUUID() as string,
+) {
   const data = wordlistImport.parse(input);
   const terms = [...new Set(data.terms.map(normalize))];
   const list: Wordlist = {
-    id: crypto.randomUUID(),
+    id,
     name: data.name,
     mode: data.mode,
     enabled: true,
@@ -21,12 +25,19 @@ export async function importWordlist(db: Database, input: z.input<typeof wordlis
     'rw',
     [db.wordlists, db.wordlistContents, db.wordlistWords, db.syncChanges],
     async (tx) => {
+      const previous = await db.wordlists.get(id);
+      if (previous && !previous.deleted) return;
+      if (previous) {
+        list.deletions = previous.deletions;
+        list.acknowledged = previous.deletions;
+      }
+      const oldContent = await db.wordlistContents.get(id);
       const content = { id: list.id, terms };
-      await db.wordlists.add(list);
-      await db.wordlistContents.add(content);
+      await db.wordlists.put(list);
+      await db.wordlistContents.put(content);
       await indexWordlist(db, list.id, terms);
-      await track(tx, 'wordlists', undefined, list);
-      await track(tx, 'wordlistContents', undefined, content);
+      await track(tx, 'wordlists', previous, list);
+      await track(tx, 'wordlistContents', oldContent, content);
     },
   );
   return list.id;

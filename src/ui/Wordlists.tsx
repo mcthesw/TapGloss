@@ -1,3 +1,6 @@
+import { AddWordlist } from './AddWordlist';
+import { builtinWordlists, builtinSource } from '../wordlists/builtin';
+import './wordlists.css';
 import { useI18n } from './i18n';
 import { createPortal } from 'preact/compat';
 import { useEffect, useRef, useState } from 'preact/hooks';
@@ -19,6 +22,7 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
   const [preview, setPreview] = useState<{ name: string; terms: string[]; duplicates: number }>();
   const [mode, setMode] = useState<Wordlist['mode']>('exclude'),
     [busy, setBusy] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [removing, setRemoving] = useState<Wordlist>();
   const file = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -51,8 +55,8 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
     <>
       {actions &&
         createPortal(
-          <button disabled={busy} onClick={() => file.current?.click()}>
-            {t('导入词表')}{' '}
+          <button disabled={busy} onClick={() => setAdding(true)}>
+            {t('添加词表')}{' '}
           </button>,
           actions,
         )}
@@ -91,8 +95,15 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
               <div>
                 <h2>{list.name}</h2>
                 <p class="muted text-sm">
-                  {list.count.toLocaleString()} {t('个词语')}
+                  {builtinWordlists.some((item) => item.wordlistId === list.id)
+                    ? t('{0} 种词形', list.count.toLocaleString())
+                    : `${list.count.toLocaleString()} ${t('个词语')}`}
                 </p>
+                {builtinWordlists.some((item) => item.wordlistId === list.id) && (
+                  <a class="muted" href={builtinSource} target="_blank" rel="noreferrer">
+                    ECDICT
+                  </a>
+                )}
               </div>
               <button
                 class="quiet wordlist-remove"
@@ -130,6 +141,16 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
           </section>
         ))}
       </div>
+      {adding && (
+        <AddWordlist
+          lists={lists}
+          close={() => setAdding(false)}
+          file={() => {
+            setAdding(false);
+            file.current?.click();
+          }}
+        />
+      )}
       {preview && (
         <Modal title="wordlist-import-title" close={() => setPreview(undefined)}>
           <div class="settings-heading">

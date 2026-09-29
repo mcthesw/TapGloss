@@ -1,0 +1,29 @@
+.builtin-lists {
+  margin-top: 18px;
+}
+.builtin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 0;
+}
+.builtin-row .muted {
+  display: block;
+  margin-top: 3px;
+}
+.builtin-row button {
+  min-width: 76px;
+  font-size: 13px;
+}
+.builtin-source {
+  margin-top: 18px;
+  font-size: 13px;
+}
+.builtin-source p {
+  margin-top: 8px;
+}
+
+.builtin-row button:disabled {
+  cursor: default;
+}

@@ -1,3 +1,4 @@
+import { builtinWordlists, downloadBuiltin } from '../src/wordlists/builtin';
 import { createReadingControls } from '../src/reading/controls';
 import { readingEnabled } from '../src/domain/reading';
 import { defineBackground } from 'wxt/utils/define-background';
@@ -178,6 +179,23 @@ export default defineBackground(() => {
             .filter((l) => !l.deleted)
             .toArray();
           break;
+        case 'importBuiltin': {
+          const item = builtinWordlists.find((list) => list.id === request.data.id);
+          if (!item) throw new Error('未找到内置词表');
+          const previous = await db.wordlists.get(item.wordlistId);
+          if (previous && !previous.deleted) {
+            data = previous.id;
+            break;
+          }
+          const downloaded = await downloadBuiltin(item.id, signal, fetch);
+          data = await importWordlist(
+            db,
+            { name: item.name, mode: request.data.mode, terms: downloaded.terms },
+            item.wordlistId,
+          );
+          change = { wordlists: true, vocabulary: true };
+          break;
+        }
         case 'importWordlist':
           data = await importWordlist(db, request.data);
           change = { wordlists: true, vocabulary: true };

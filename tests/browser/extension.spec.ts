@@ -409,7 +409,7 @@ test('numeric clicks and selections do not generate records; mistaken lookups ca
 
 test('wordlists have their own page, update reading reminders and support English UI', async () => {
   await options.getByRole('button', { name: '词表', exact: true }).click();
-  await expect(options.getByRole('button', { name: '导入词表', exact: true })).toBeVisible();
+  await expect(options.getByRole('button', { name: '添加词表', exact: true })).toBeVisible();
   await options.getByLabel('选择词表文件').setInputFiles({
     name: 'Common.csv',
     mimeType: 'text/csv',

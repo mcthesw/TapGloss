@@ -1,10 +1,11 @@
+import { concealed } from './spoilers';
 import { isNumericExpression, isReadingExpression } from '../domain/expression';
 import type { Source } from '../domain/model';
 
 const excluded =
   'a,button,input,textarea,select,[contenteditable]:not([contenteditable="false"]),script,style,pre,code,nav,header,footer,[role="button"],tap-gloss';
 export function eligible(node: Node) {
-  return !node.parentElement?.closest(excluded);
+  return !node.parentElement?.closest(excluded) && !concealed(node);
 }
 export function textNodes(root: Node) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {

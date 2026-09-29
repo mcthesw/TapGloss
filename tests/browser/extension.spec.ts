@@ -540,3 +540,48 @@ test('single Latin letters stay plain but remain available through explicit sele
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.close();
 });
+
+test('spoiler reveal gestures never create a lookup; subsequent clicks on revealed text do', async () => {
+  const page = await context.newPage();
+  await page.goto(`${origin}/reading`);
+  await page.locator('tap-gloss').waitFor({ state: 'attached' });
+  await page.evaluate(() => {
+    const p = document.createElement('p');
+    p.innerHTML =
+      '<span id="old-spoiler" class="md-spoiler-text"><em>concealed</em></span> <shreddit-spoiler id="new-spoiler">mystery</shreddit-spoiler>';
+    document.body.prepend(p);
+    const old = p.querySelector('span')!;
+    old.addEventListener('pointerdown', () => old.classList.add('revealed'));
+    const host = p.querySelector('shreddit-spoiler')!;
+    const shadow = host.attachShadow({ mode: 'open' });
+    shadow.innerHTML =
+      '<span role="button"><span aria-hidden="true" style="opacity:0"><slot></slot></span></span>';
+    shadow.querySelector('[role]')!.addEventListener('click', () => {
+      const inner = shadow.querySelector('[aria-hidden]')!;
+      inner.setAttribute('aria-hidden', 'false');
+      inner.setAttribute('style', 'opacity:1');
+    });
+  });
+  const highlighted = () =>
+    page.evaluate(() => {
+      const css = CSS as typeof CSS & { highlights: Map<string, Set<Range>> };
+      return [...(css.highlights.get('tapgloss-new') ?? [])].map((range) => range.toString());
+    });
+  await expect.poll(highlighted).toContain('afternoon');
+  expect(await highlighted()).not.toContain('concealed');
+  expect(await highlighted()).not.toContain('mystery');
+  for (const [id, word] of [
+    ['old-spoiler', 'concealed'],
+    ['new-spoiler', 'mystery'],
+  ]) {
+    const before = services.counts();
+    await page.locator(`#${id}`).click();
+    await expect.poll(highlighted).toContain(word);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect(services.counts()).toEqual(before);
+    await page.locator(`#${id}`).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+  }
+  await page.close();
+});

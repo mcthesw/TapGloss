@@ -1,3 +1,4 @@
+import { createRevealGuard } from '../src/page/spoilers';
 import { createWordFocus } from '../src/page/word-focus';
 import { browser } from 'wxt/browser';
 import { render, type VNode } from 'preact';
@@ -143,6 +144,9 @@ export default defineContentScript({
       );
       renderLookup();
     };
+    const revealGuard = createRevealGuard((node) => highlighter?.recheck(node));
+    ctx.addEventListener(window, 'pointerdown', (event) => revealGuard.pointerdown(event), { capture: true });
+    ctx.addEventListener(window, 'click', (event) => revealGuard.click(event), { capture: true });
     let hoverFrame = 0;
     ctx.addEventListener(document, 'pointermove', (e) => {
       cancelAnimationFrame(hoverFrame);
@@ -176,6 +180,7 @@ export default defineContentScript({
       )
         return;
       if (opened) close();
+      if (e.defaultPrevented || revealGuard.blocked(e)) return;
       const sequence = ++clickSequence;
       if (config.gesture === 'alt' && !e.altKey) return;
       if (e.ctrlKey || e.metaKey || e.shiftKey || !getSelection()?.isCollapsed) return;
@@ -205,6 +210,7 @@ export default defineContentScript({
       unsubscribe();
       cancelAnimationFrame(hoverFrame);
       focus.dispose();
+      revealGuard.dispose();
       highlighter?.dispose();
       themeObserver.disconnect();
       media.removeEventListener('change', updateTheme);

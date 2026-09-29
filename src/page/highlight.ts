@@ -171,6 +171,12 @@ export function createHighlighter(
   document.addEventListener('visibilitychange', shown);
   return {
     refresh,
+    recheck(node: Node) {
+      if (stopped || !node.isConnected) return;
+      const block = blockOf(node);
+      remove(block);
+      discover(block);
+    },
     marked(range: Range) {
       const word = words.get(normalize(range.toString()));
       return !!word && !word.suppressed;

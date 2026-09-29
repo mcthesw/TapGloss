@@ -1,0 +1,45 @@
+{
+  "sourceRevision": "bc015ed2e24a7abef49fc6dbbb7fe32c1dadaf8b",
+  "lists": [
+    {
+      "id": "cet4",
+      "name": "CET-4",
+      "headwords": 5361,
+      "count": 14269,
+      "bytes": 118009,
+      "sha256": "f6532a3e48060c7d7338aa8821d0509bef79e40c8428c3f48403b005565b009d"
+    },
+    {
+      "id": "cet6",
+      "name": "CET-6",
+      "headwords": 7116,
+      "count": 18661,
+      "bytes": 158533,
+      "sha256": "4131e4c18bcf84ec9799e6c25af203e4a57ae0b416777ea6967dc9ca9da320fd"
+    },
+    {
+      "id": "ky",
+      "name": "考研",
+      "headwords": 6256,
+      "count": 16945,
+      "bytes": 142224,
+      "sha256": "f6ee0f8439def718c50297338b40aaf902e1f308f9360d8044d91184330e0ce8"
+    },
+    {
+      "id": "ielts",
+      "name": "IELTS",
+      "headwords": 7035,
+      "count": 17995,
+      "bytes": 152459,
+      "sha256": "2c3adc26939d4a3097c077cdaccf8d3b17c91c63b889057a0ba131ef05b14dba"
+    },
+    {
+      "id": "toefl",
+      "name": "TOEFL",
+      "headwords": 9255,
+      "count": 22918,
+      "bytes": 201107,
+      "sha256": "2be96ff35ba7fdbb0bc3d33bc68fe7b181e09cee393233d9958161b73a33feb6"
+    }
+  ]
+}

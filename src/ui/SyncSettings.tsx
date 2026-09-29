@@ -120,7 +120,7 @@ export function SyncSettings({
             {t('工作区')}{' '}
             <input
               required
-              pattern="[a-zA-Z0-9_-]{1,80}"
+              pattern="(?:[a-zA-Z0-9_]|-){1,80}"
               value={value.workspace}
               onInput={(e) => patch({ workspace: e.currentTarget.value })}
             />

@@ -158,7 +158,20 @@ export function subscribeChanges(listener: (change: Change) => void) {
   let lastRevision: string | undefined;
   const connect = () => {
     if (closed || document.hidden || port) return;
-    const connected = browser.runtime.connect({ name: 'changes' });
+    let connected: ReturnType<typeof browser.runtime.connect>;
+    try {
+      if (!browser.runtime.id) {
+        closed = true;
+        document.removeEventListener('visibilitychange', visibility);
+        return;
+      }
+      connected = browser.runtime.connect({ name: 'changes' });
+    } catch {
+      // Reloaded extensions cannot reconnect from their old content-script context.
+      closed = true;
+      document.removeEventListener('visibilitychange', visibility);
+      return;
+    }
     port = connected;
     connected.onMessage.addListener((change: Change) => {
       if (change.initial && change.revision === lastRevision && lastRevision !== undefined) return;
@@ -166,6 +179,7 @@ export function subscribeChanges(listener: (change: Change) => void) {
       listener(change);
     });
     connected.onDisconnect.addListener(() => {
+      void browser.runtime.lastError;
       if (port && port !== connected) return;
       port = undefined;
       if (!closed && !document.hidden) retry = setTimeout(connect, 1000);

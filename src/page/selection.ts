@@ -20,20 +20,20 @@ export function rangeAtPoint(x: number, y: number): Range | undefined {
     caretRangeFromPoint?: (x: number, y: number) => Range | null;
   };
   const caret = doc.caretPositionFromPoint?.(x, y);
-  let range = doc.caretRangeFromPoint?.(x, y) ?? undefined;
-  if (caret) {
-    range = document.createRange();
-    range.setStart(caret.offsetNode, caret.offset);
-    range.collapse(true);
-  }
-  if (!range || range.startContainer.nodeType !== Node.TEXT_NODE || !eligible(range.startContainer)) return;
-  const text = range.startContainer.textContent ?? '';
+  const fallback = caret ? undefined : doc.caretRangeFromPoint?.(x, y);
+  const node = caret?.offsetNode ?? fallback?.startContainer;
+  const offset = caret?.offset ?? fallback?.startOffset;
+  // Element offsets count children, not characters. Reject them before constructing a Range.
+  if (!node || node.nodeType !== Node.TEXT_NODE || !node.isConnected || !eligible(node)) return;
+  const text = (node as Text).data;
+  if (offset === undefined || !Number.isInteger(offset) || offset < 0 || offset >= text.length) return;
   const word = [...new Intl.Segmenter(undefined, { granularity: 'word' }).segment(text)].find(
-    (s) => s.isWordLike && s.index <= range!.startOffset && s.index + s.segment.length > range!.startOffset,
+    (s) => s.isWordLike && s.index <= offset && s.index + s.segment.length > offset,
   );
   if (!word || isNumericExpression(word.segment)) return;
-  range.setStart(range.startContainer, word.index);
-  range.setEnd(range.startContainer, word.index + word.segment.length);
+  const range = document.createRange();
+  range.setStart(node, word.index);
+  range.setEnd(node, word.index + word.segment.length);
   const rect = range.getBoundingClientRect();
   if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return;
   return range;

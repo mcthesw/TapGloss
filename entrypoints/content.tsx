@@ -13,7 +13,9 @@ export default defineContentScript({
   matches: ['http://*/*', 'https://*/*'],
   cssInjectionMode: 'ui',
   async main(ctx) {
-    let config = await send({ type: 'readingSettings' });
+    const initial = await send({ type: 'readingSettings' }).catch(() => undefined);
+    if (!initial || ctx.isInvalid) return;
+    let config = initial;
     let container: HTMLElement,
       opened = false,
       clickSequence = 0;
@@ -84,7 +86,7 @@ export default defineContentScript({
       const source = sourceFromRange(range);
       if (!source) return;
       if (!config.configured) {
-        void send({ type: 'open' });
+        void send({ type: 'open' }).catch(() => {});
         return;
       }
       readingSurface = range.startContainer.parentElement ?? document.body;
@@ -110,7 +112,7 @@ export default defineContentScript({
       const range = rangeAtPoint(e.clientX, e.clientY);
       if (!range || highlighter.ignored(range)) return;
       if (
-        (await highlighter.blocked(range)) ||
+        (await highlighter.blocked(range).catch(() => true)) ||
         sequence !== clickSequence ||
         !range.startContainer.isConnected
       )
@@ -128,6 +130,7 @@ export default defineContentScript({
       query(range, rect.left, rect.bottom);
     });
     ctx.onInvalidated(() => {
+      close();
       unsubscribe();
       highlighter.dispose();
       themeObserver.disconnect();

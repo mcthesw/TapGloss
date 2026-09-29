@@ -184,7 +184,7 @@ export function Lookup({ source, x, y, close }: { source: Source; x: number; y: 
           aria-label={t('记录与设置')}
           title={t('记录与设置')}
           onClick={() => {
-            void send({ type: 'open' });
+            void send({ type: 'open' }).catch(() => setError(t('连接已断开，请刷新页面')));
           }}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">

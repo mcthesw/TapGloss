@@ -20,6 +20,13 @@ test('automatic locale follows the browser and import errors are translated', as
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.addStyleTag({ content: ':root { font-family: Arial, sans-serif; font-size: 18px; }' });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.getByLabel('Storage', { exact: true }).click();
+    await page.getByRole('option', { name: 'WebDAV', exact: true }).click();
+    const workspace = page.getByLabel('Workspace', { exact: true });
+    await workspace.fill('my_workspace-2');
+    expect(await workspace.evaluate((el: HTMLInputElement) => el.checkValidity())).toBe(true);
+    await workspace.fill('invalid/workspace');
+    expect(await workspace.evaluate((el: HTMLInputElement) => el.checkValidity())).toBe(false);
     await page.getByRole('button', { name: 'Wordlists', exact: true }).click();
     await page
       .getByLabel('Choose a wordlist file')

@@ -7,7 +7,7 @@ import { requestSchema, type Change } from '../src/messages';
 import { availableModels, explain } from '../src/explain/client';
 import { Anki } from '../src/anki/client';
 import { listRecords, recordDetail } from '../src/storage/catalog';
-import { editMaterial, removeSource } from '../src/storage/mutations';
+import { editMaterial, removeSource, removeLookup } from '../src/storage/mutations';
 import { SyncService, testRemote } from '../src/sync/service';
 import { importWordlist, changeWordlist, readingWords } from '../src/storage/wordlists';
 
@@ -102,9 +102,16 @@ export default defineBackground(() => {
       const trusted = sender.url?.startsWith(browser.runtime.getURL('/'));
       if (
         !trusted &&
-        !['lookup', 'read', 'vocabulary', 'readingWords', 'readingSettings', 'state', 'open'].includes(
-          request.type,
-        )
+        ![
+          'lookup',
+          'read',
+          'vocabulary',
+          'readingWords',
+          'readingSettings',
+          'state',
+          'open',
+          'removeLookup',
+        ].includes(request.type)
       )
         throw new Error('此操作只能在扩展页面中进行');
       let data: unknown;
@@ -241,6 +248,11 @@ export default defineBackground(() => {
         }
         case 'remove':
           await removeEntry(db, request.data.id, request.data.anki);
+          change = { records: true };
+          runJobs = true;
+          break;
+        case 'removeLookup':
+          await removeLookup(db, request.data.id, request.data.anki);
           change = { records: true };
           runJobs = true;
           break;

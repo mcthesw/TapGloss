@@ -8,6 +8,9 @@ export function Lookup({ source, x, y, close }: { source: Source; x: number; y: 
   const t = useI18n();
   const [record, setRecord] = useState<RecordView>();
   const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteAnki, setDeleteAnki] = useState(false);
+  const [busy, setBusy] = useState(false);
   const root = useRef<HTMLElement>(null);
   const [position, setPosition] = useState({ left: 12, top: 12 });
   useLayoutEffect(() => {
@@ -87,17 +90,57 @@ export function Lookup({ source, x, y, close }: { source: Source; x: number; y: 
         </button>
       </header>
       <div class="lookup-body">
-        <div class="source">
-          <div class="label">{t('原文')}</div>
-          {source.sentence.replace(/\s+/gu, ' ').trim()}
-        </div>
-        {material && <Examples material={material} numbered />}
+        {deleting ? (
+          <div>
+            <p>{t('删除这条学习记录？')}</p>
+            <label>
+              <input
+                type="checkbox"
+                checked={deleteAnki}
+                disabled={busy}
+                onChange={(e) => setDeleteAnki(e.currentTarget.checked)}
+              />{' '}
+              {t('同时删除 Anki 笔记')}
+            </label>
+            <p class="muted mt-2">{deleteAnki ? t('将删除关联笔记及复习历史。') : t('Anki 笔记会保留。')}</p>
+            <div class="detail-actions">
+              <button disabled={busy} onClick={() => setDeleting(false)}>
+                {t('取消删除')}
+              </button>
+              <button
+                class="danger"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await send({ type: 'removeLookup', data: { id: record!.capture.id, anki: deleteAnki } });
+                    close();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : t('操作未完成'));
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                {t('确认删除')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div class="source">
+              <div class="label">{t('原文')}</div>
+              {source.sentence.replace(/\s+/gu, ' ').trim()}
+            </div>
+            {material && <Examples material={material} numbered />}
+          </>
+        )}
       </div>
       <footer class={`lookup-footer ${error || record?.job?.error ? 'has-error' : ''}`}>
         <p class={`lookup-status ${error || record?.job?.error ? 'error' : 'muted'}`} role="status">
           {t(status)}
         </p>
-        {record?.entry ? (
+        {!deleting && record?.entry ? (
           <button
             class="lookup-known"
             aria-pressed={record.state === 'known'}
@@ -120,6 +163,21 @@ export function Lookup({ source, x, y, close }: { source: Source; x: number; y: 
           </button>
         ) : (
           <span />
+        )}
+        {record && !deleting && (
+          <button
+            class="quiet lookup-manage"
+            aria-label={t('删除')}
+            title={t('删除')}
+            onClick={() => {
+              setDeleteAnki(false);
+              setDeleting(true);
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+              <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7M14 10v7" />
+            </svg>
+          </button>
         )}
         <button
           class="quiet lookup-manage"

@@ -63,6 +63,10 @@ export const requestSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('retry'), data: z.string().max(150) }),
   z.object({ type: z.literal('remove'), data: z.object({ id: z.string(), anki: z.boolean() }) }),
+  z.object({
+    type: z.literal('removeLookup'),
+    data: z.object({ id: z.string().max(100), anki: z.boolean() }),
+  }),
   z.object({ type: z.literal('removeSource'), data: z.string().max(100) }),
   z.object({ type: z.literal('edit'), data: z.object({ id: z.string(), material: materialSchema }) }),
 ]);
@@ -98,6 +102,7 @@ type Results = {
   retry: void;
   remove: void;
   removeSource: void;
+  removeLookup: void;
   edit: void;
 };
 export async function send<T extends Request['type']>(

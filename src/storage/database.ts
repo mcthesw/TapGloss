@@ -1,3 +1,4 @@
+import { isNumericExpression } from '../domain/expression';
 import Dexie, { type EntityTable, type Table } from 'dexie';
 import type { Wordlist, WordlistContent, WordlistWord } from '../domain/wordlists';
 import type { CatalogRow } from '../domain/records';
@@ -95,6 +96,8 @@ export function queue(db: Database, kind: Job['kind'], ref: string) {
   });
 }
 export async function capture(db: Database, source: Source) {
+  if (isNumericExpression(source.sentence.slice(source.start, source.end)))
+    throw new Error('纯数字不需要查询');
   const id = await captureId(source);
   await db.transaction('rw', [db.captures, db.entries, db.jobs, db.catalog, db.syncChanges], async (tx) => {
     const previous = await db.captures.get(id);

@@ -1,4 +1,5 @@
 export const english: Record<string, string> = {
+  纯数字不需要查询: 'Numbers do not need a lookup',
   '已获取 {0} 个模型': '{0} models found',
   '未找到模型，可以手动填写名称。': 'No models found. Enter a model name manually.',
   '获取失败，可手动填写模型。': 'Could not fetch models. You can enter a name manually.',

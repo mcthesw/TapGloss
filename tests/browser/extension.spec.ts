@@ -361,6 +361,52 @@ test('visible idle record page performs no periodic reads for 30 seconds', async
   expect(await options.evaluate(() => (globalThis as unknown as { reads: number }).reads)).toBe(0);
 });
 
+test('numeric clicks and selections do not generate records; mistaken lookups can be deleted in place', async () => {
+  const page = await context.newPage();
+  await page.goto(`${origin}/reading`);
+  await page.locator('tap-gloss').waitFor({ state: 'attached' });
+  await page.evaluate(() => {
+    const p = document.createElement('p');
+    p.id = 'numeric';
+    p.textContent = '5018';
+    document.body.append(p);
+  });
+  const before = services.counts();
+  await page.locator('#numeric').click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.locator('#numeric').evaluate((el) => {
+    const r = document.createRange();
+    r.selectNodeContents(el.firstChild!);
+    getSelection()!.removeAllRanges();
+    getSelection()!.addRange(r);
+  });
+  await page.keyboard.press('Alt+q');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(services.counts()).toEqual(before);
+  await page.locator('em').evaluate((el) => {
+    const r = document.createRange();
+    r.selectNodeContents(el.firstChild!);
+    getSelection()!.removeAllRanges();
+    getSelection()!.addRange(r);
+  });
+  await page.keyboard.press('Alt+q');
+  const popup = page.getByRole('dialog', { name: '语境查询' });
+  await expect(popup.getByRole('status')).toHaveText('已保存到 Anki');
+  await expect(popup.getByRole('button', { name: '删除', exact: true })).toBeVisible();
+  await popup.getByRole('button', { name: '删除', exact: true }).click();
+  await expect(popup.getByLabel('同时删除 Anki 笔记')).not.toBeChecked();
+  await page.screenshot({ path: 'test-results/lookup-delete.png' });
+  await popup.getByRole('button', { name: '取消删除' }).click();
+  await expect(popup.getByRole('button', { name: '删除', exact: true })).toBeVisible();
+  await expect(popup.getByRole('status')).toHaveText('已保存到 Anki');
+  const count = services.notes.size;
+  await popup.getByRole('button', { name: '删除', exact: true }).click();
+  await popup.getByRole('button', { name: '确认删除' }).click();
+  await expect(popup).toHaveCount(0);
+  expect(services.notes.size).toBe(count);
+  await page.close();
+});
+
 test('wordlists have their own page, update reading reminders and support English UI', async () => {
   await options.getByRole('button', { name: '词表', exact: true }).click();
   await expect(options.getByRole('button', { name: '导入词表', exact: true })).toBeVisible();

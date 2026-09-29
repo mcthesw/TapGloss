@@ -1,6 +1,6 @@
 import type { Material } from '../domain/model';
 import { validateMaterial } from '../domain/model';
-import { Database, queue } from './database';
+import { Database, queue, removeEntry } from './database';
 import { updateCatalog } from './catalog';
 import { track } from './changes';
 import { deletion } from '../domain/sync';
@@ -46,6 +46,20 @@ export async function editMaterial(db: Database, entryId: string, value: Materia
       await track(tx, 'entries', entry, next);
       await updateCatalog(db, entryId);
       await queue(db, 'export', entryId);
+    },
+  );
+}
+
+// Resolve the current entry inside the transaction: generation may finish while confirmation is open.
+export async function removeLookup(db: Database, captureId: string, anki: boolean) {
+  await db.transaction(
+    'rw',
+    [db.captures, db.entries, db.generations, db.catalog, db.jobs, db.syncChanges],
+    async () => {
+      const capture = await db.captures.get(captureId);
+      if (!capture || capture.deleted) return;
+      if (capture.entryId) await removeEntry(db, capture.entryId, anki);
+      else await removeSource(db, captureId);
     },
   );
 }

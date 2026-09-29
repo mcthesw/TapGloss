@@ -1,3 +1,4 @@
+import { isNumericExpression } from '../domain/expression';
 import type { ReadingWord } from '../domain/wordlists';
 import { normalize } from '../domain/model';
 import { eligible, textNodes } from './selection';
@@ -59,7 +60,7 @@ export function createHighlighter(
         const segmenter = new Intl.Segmenter(undefined, { granularity: 'word' });
         const segments = nodes.flatMap((node) =>
           [...segmenter.segment(node.data)]
-            .filter((s) => s.isWordLike && !/^\p{N}+$/u.test(s.segment))
+            .filter((s) => s.isWordLike && !isNumericExpression(s.segment))
             .map((s) => ({ node, ...s })),
         );
         await fetchWords(segments.map((s) => normalize(s.segment)));

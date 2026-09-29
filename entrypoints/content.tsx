@@ -23,7 +23,13 @@ export default defineContentScript({
         ? Promise.resolve(true)
         : undefined;
     browser.runtime.onMessage.addListener(probe);
-    ctx.onInvalidated(() => browser.runtime.onMessage.removeListener(probe));
+    ctx.onInvalidated(() => {
+      try {
+        browser.runtime.onMessage.removeListener(probe);
+      } catch {
+        /* Already invalidated. */
+      }
+    });
     let feedback: HTMLElement;
     let container: HTMLElement,
       opened = false,
@@ -41,7 +47,11 @@ export default defineContentScript({
       onRemove: () => {
         render(null, container);
       },
+    }).catch((error: unknown) => {
+      if (ctx.isInvalid) return;
+      throw error;
     });
+    if (!ui || ctx.isInvalid) return;
     ui.mount();
     const focus = createWordFocus(feedback!, (range) =>
       isDarkSurface(range.startContainer.parentElement ?? undefined),
@@ -94,10 +104,13 @@ export default defineContentScript({
         highlighter?.refresh(config.excludedLanguages);
       }
     };
-    const unsubscribe = subscribeChanges((change) => {
-      if (change.settings || change.initial) void refreshSettings().catch(() => {});
-      if (change.vocabulary || change.initial) highlighter?.refresh();
-    });
+    const unsubscribe = subscribeChanges(
+      (change) => {
+        if (change.settings || change.initial) void refreshSettings().catch(() => {});
+        if (change.vocabulary || change.initial) highlighter?.refresh();
+      },
+      () => ctx.notifyInvalidated(),
+    );
     const close = () => {
       clickSequence++;
       focus.clear();
@@ -133,7 +146,13 @@ export default defineContentScript({
     let hoverFrame = 0;
     ctx.addEventListener(document, 'pointermove', (e) => {
       cancelAnimationFrame(hoverFrame);
-      if (!config.enabled || !highlighter || e.buttons || e.composedPath().includes(ui.shadowHost)) {
+      if (
+        ctx.isInvalid ||
+        !config.enabled ||
+        !highlighter ||
+        e.buttons ||
+        e.composedPath().includes(ui.shadowHost)
+      ) {
         focus.hover();
         return;
       }
@@ -148,6 +167,7 @@ export default defineContentScript({
     });
     ctx.addEventListener(document, 'click', async (e) => {
       if (
+        ctx.isInvalid ||
         !config.enabled ||
         !highlighter ||
         !e.isTrusted ||
@@ -170,6 +190,7 @@ export default defineContentScript({
       query(range, e.clientX, e.clientY);
     });
     ctx.addEventListener(document, 'keydown', (e) => {
+      if (ctx.isInvalid) return;
       if (e.key === 'Escape') close();
       if (!e.isTrusted || !e.altKey || e.code !== 'KeyQ') return;
       const selection = getSelection();

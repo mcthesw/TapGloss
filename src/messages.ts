@@ -143,6 +143,28 @@ export async function send<T extends Request['type']>(
   return response.data;
 }
 
+function runtimeAlive() {
+  try {
+    return !!browser.runtime.id;
+  } catch {
+    return false;
+  }
+}
+function disconnect(port?: ReturnType<typeof browser.runtime.connect>) {
+  try {
+    port?.disconnect();
+  } catch {
+    /* The old context is already gone. */
+  }
+}
+function readDisconnectError() {
+  try {
+    void browser.runtime.lastError;
+  } catch {
+    /* Reload can invalidate runtime getters too. */
+  }
+}
+
 function cancellableRequest(request: Request, signal: AbortSignal): Promise<unknown> {
   if (signal.aborted) return Promise.reject(signal.reason);
   return new Promise((resolve, reject) => {
@@ -152,15 +174,22 @@ function cancellableRequest(request: Request, signal: AbortSignal): Promise<unkn
       if (finished) return;
       finished = true;
       signal.removeEventListener('abort', abort);
-      port.disconnect();
+      disconnect(port);
       if (error) reject(error);
       else resolve(value);
     };
     const abort = () => finish(undefined, signal.reason);
     signal.addEventListener('abort', abort, { once: true });
     port.onMessage.addListener((value) => finish(value));
-    port.onDisconnect.addListener(() => finish(undefined, new Error('扩展连接已断开')));
-    port.postMessage(request);
+    port.onDisconnect.addListener(() => {
+      readDisconnectError();
+      finish(undefined, new Error('扩展连接已断开'));
+    });
+    try {
+      port.postMessage(request);
+    } catch (error) {
+      finish(undefined, error);
+    }
   });
 }
 
@@ -174,7 +203,7 @@ export type Change = {
   revision?: string;
 };
 // Reconnect only while visible. A reconnect always reads a fresh bounded snapshot.
-export function subscribeChanges(listener: (change: Change) => void) {
+export function subscribeChanges(listener: (change: Change) => void, invalidated?: () => void) {
   let port: ReturnType<typeof browser.runtime.connect> | undefined;
   let closed = false,
     retry: ReturnType<typeof setTimeout> | undefined;
@@ -183,16 +212,15 @@ export function subscribeChanges(listener: (change: Change) => void) {
     if (closed || document.hidden || port) return;
     let connected: ReturnType<typeof browser.runtime.connect>;
     try {
-      if (!browser.runtime.id) {
-        closed = true;
-        document.removeEventListener('visibilitychange', visibility);
+      if (!runtimeAlive()) {
+        stop();
+        invalidated?.();
         return;
       }
       connected = browser.runtime.connect({ name: 'changes' });
     } catch {
-      // Reloaded extensions cannot reconnect from their old content-script context.
-      closed = true;
-      document.removeEventListener('visibilitychange', visibility);
+      stop();
+      invalidated?.();
       return;
     }
     port = connected;
@@ -202,9 +230,14 @@ export function subscribeChanges(listener: (change: Change) => void) {
       listener(change);
     });
     connected.onDisconnect.addListener(() => {
-      void browser.runtime.lastError;
+      readDisconnectError();
       if (port && port !== connected) return;
       port = undefined;
+      if (!runtimeAlive()) {
+        stop();
+        invalidated?.();
+        return;
+      }
       if (!closed && !document.hidden) retry = setTimeout(connect, 1000);
     });
   };
@@ -213,15 +246,18 @@ export function subscribeChanges(listener: (change: Change) => void) {
       clearTimeout(retry);
       const old = port;
       port = undefined;
-      old?.disconnect();
+      disconnect(old);
     } else connect();
   };
-  document.addEventListener('visibilitychange', visibility);
-  connect();
-  return () => {
+  const stop = () => {
     closed = true;
     clearTimeout(retry);
     document.removeEventListener('visibilitychange', visibility);
-    port?.disconnect();
+    const old = port;
+    port = undefined;
+    disconnect(old);
   };
+  document.addEventListener('visibilitychange', visibility);
+  connect();
+  return stop;
 }

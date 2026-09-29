@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 test.use({ launchOptions: { executablePath: process.env.TAPGLOSS_TEST_BROWSER } });
-const source = ['src/domain/expression.ts', 'src/page/selection.ts']
+const source = ['src/domain/expression.ts', 'src/page/spoilers.ts', 'src/page/selection.ts']
   .map((path) =>
     readFileSync(path, 'utf8')
       .replace(/^import .*;$/gm, '')

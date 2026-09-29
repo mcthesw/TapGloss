@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { isNumericExpression } from '../src/domain/expression';
+import { isNumericExpression, isReadingExpression } from '../src/domain/expression';
 import { Database, capture, view } from '../src/storage/database';
 import { removeLookup } from '../src/storage/mutations';
 import { Worker } from '../src/storage/worker';
@@ -39,4 +39,12 @@ it('deletes pending lookups and resolves entries generated before confirmation',
     globalThis.fetch = original;
     await db.delete();
   }
+});
+
+it('suppresses single Latin letters only at the passive reading boundary', () => {
+  for (const value of ['a', 'I', 'à', 'e\u0301', 'Ａ', 'x', '5018'])
+    expect(isReadingExpression(value), value).toBe(false);
+  for (const value of ['我', '猫', 'の', '나', 'я', 'an', 'B2', 'a word'])
+    expect(isReadingExpression(value), value).toBe(true);
+  expect(isNumericExpression('I')).toBe(false);
 });

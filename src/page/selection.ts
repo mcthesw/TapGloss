@@ -1,4 +1,4 @@
-import { isNumericExpression } from '../domain/expression';
+import { isNumericExpression, isReadingExpression } from '../domain/expression';
 import type { Source } from '../domain/model';
 
 const excluded =
@@ -30,7 +30,7 @@ export function rangeAtPoint(x: number, y: number): Range | undefined {
   const word = [...new Intl.Segmenter(undefined, { granularity: 'word' }).segment(text)].find(
     (s) => s.isWordLike && s.index <= offset && s.index + s.segment.length > offset,
   );
-  if (!word || isNumericExpression(word.segment)) return;
+  if (!word || !isReadingExpression(word.segment)) return;
   const range = document.createRange();
   range.setStart(node, word.index);
   range.setEnd(node, word.index + word.segment.length);

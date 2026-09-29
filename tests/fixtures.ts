@@ -1,6 +1,10 @@
 import { cardStyle } from '../src/anki/template';
 import { settingsSchema, type Material, type Source } from '../src/domain/model';
-export const settings = settingsSchema.parse({ baseUrl: 'http://127.0.0.1:9876', apiKey: 'test-only' });
+export const settings = settingsSchema.parse({
+  clozeFirstLetter: false,
+  baseUrl: 'http://127.0.0.1:9876',
+  apiKey: 'test-only',
+});
 export const source: Source = {
   url: 'https://example.org/reading',
   title: 'Reading',

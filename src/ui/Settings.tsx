@@ -201,6 +201,14 @@ export function Settings({
                 />
               </label>
             </div>
+            <label>
+              <input
+                type="checkbox"
+                checked={value.clozeFirstLetter}
+                onChange={(e) => change({ clozeFirstLetter: e.currentTarget.checked })}
+              />{' '}
+              {t('新卡显示首字母提示')}
+            </label>
             <button
               type="button"
               disabled={ankiBusy}

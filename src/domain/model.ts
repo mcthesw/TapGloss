@@ -9,6 +9,7 @@ export const settingsSchema = z.object({
   model: z.string().trim().min(1).max(200).default('deepseek-flash'),
   ankiUrl: httpUrl.default('http://127.0.0.1:8765'),
   ankiKey: z.string().max(4096).default(''),
+  clozeFirstLetter: z.boolean().default(true),
   deck: z.string().trim().min(1).max(200).default('TapGloss'),
   prompt: z.string().max(12000).default(''),
   theme: z.enum(['auto', 'light', 'dark']).default('auto'),
@@ -62,7 +63,13 @@ export type Entry = Lifecycle & {
   deleted?: boolean;
   deletedAt?: number;
 };
-export type AnkiBinding = { id: string; noteId?: number; syncedHash?: string; pendingHash?: string };
+export type AnkiBinding = {
+  id: string;
+  noteId?: number;
+  syncedHash?: string;
+  pendingHash?: string;
+  clozeFirstLetter?: boolean;
+};
 export type Vocabulary = {
   id: string;
   language: string;

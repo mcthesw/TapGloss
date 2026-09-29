@@ -1,4 +1,5 @@
 export const english: Record<string, string> = {
+  新卡显示首字母提示: 'Show first-letter hints on new cards',
   添加词表: 'Add wordlist',
   导入文件: 'Import file',
   添加: 'Add',

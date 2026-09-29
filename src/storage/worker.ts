@@ -159,14 +159,20 @@ export class Worker {
     const captures = (await this.db.captures.where('entryId').equals(entry.id).sortBy('createdAt')).filter(
       (c) => !c.deleted,
     );
-    const values = noteFields(entry, generation.material, captures);
-    const nextHash = await hash(values);
     const connection = JSON.stringify([settings.ankiUrl, settings.ankiKey, settings.deck]);
     if (!prepared.has(connection)) {
       await anki.setup();
       prepared.add(connection);
     }
     const note = await anki.find(entry);
+    // Freeze the choice before the first write, including uncertain writes retried later.
+    const firstLetter =
+      binding.clozeFirstLetter ??
+      (!note && !binding.noteId && !binding.pendingHash && !binding.syncedHash && settings.clozeFirstLetter);
+    if (binding.clozeFirstLetter === undefined)
+      await this.db.ankiBindings.update(entry.id, { clozeFirstLetter: firstLetter });
+    const values = noteFields(entry, generation.material, captures, firstLetter);
+    const nextHash = await hash(values);
     if (note) {
       const currentHash = await anki.fieldHash(note);
       if (

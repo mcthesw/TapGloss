@@ -6,13 +6,18 @@ import { fetchService, httpFailure } from '../domain/failure';
 export const modelName = 'TapGloss';
 const fields = ['TapGlossId', 'Text', 'Extra'];
 export const escapeHtml = (s: string) => s.replace(/[&<>"'{}]/g, (c) => `&#${c.charCodeAt(0)};`);
-export function noteFields(entry: Entry, material: Material, captures: Capture[]) {
+export function noteFields(entry: Entry, material: Material, captures: Capture[], firstLetter = false) {
   return {
     TapGlossId: entry.id,
     Text: material.examples
       .map((e) => {
         const i = e.text.indexOf(e.target);
-        return `<p>${escapeHtml(e.text.slice(0, i))}{{c1::${escapeHtml(e.target)}}}${escapeHtml(e.text.slice(i + e.target.length))}</p>`;
+        const letters = Array.from(e.target.normalize('NFC'));
+        const hint =
+          firstLetter && letters.length >= 4 && /^\p{Script=Latin}+$/u.test(e.target.normalize('NFC'))
+            ? `::${escapeHtml(letters[0]!)}…`
+            : '';
+        return `<p>${escapeHtml(e.text.slice(0, i))}{{c1::${escapeHtml(e.target)}${hint}}}${escapeHtml(e.text.slice(i + e.target.length))}</p>`;
       })
       .join(''),
     Extra:

@@ -1,3 +1,4 @@
+import { createWordFocus } from '../src/page/word-focus';
 import { browser } from 'wxt/browser';
 import { render, type VNode } from 'preact';
 import { defineContentScript } from 'wxt/utils/define-content-script';
@@ -23,6 +24,7 @@ export default defineContentScript({
         : undefined;
     browser.runtime.onMessage.addListener(probe);
     ctx.onInvalidated(() => browser.runtime.onMessage.removeListener(probe));
+    let feedback: HTMLElement;
     let container: HTMLElement,
       opened = false,
       clickSequence = 0;
@@ -33,13 +35,15 @@ export default defineContentScript({
       isolateEvents: true,
       onMount: (element) => {
         container = document.createElement('div');
-        element.append(container);
+        feedback = document.createElement('div');
+        element.append(container, feedback);
       },
       onRemove: () => {
         render(null, container);
       },
     });
     ui.mount();
+    const focus = createWordFocus(feedback!);
     let readingSurface: Element = document.body;
     let lookupView: VNode | undefined;
     const renderLookup = () =>
@@ -94,6 +98,7 @@ export default defineContentScript({
     });
     const close = () => {
       clickSequence++;
+      focus.clear();
       render(null, container);
       lookupView = undefined;
       opened = false;
@@ -111,6 +116,7 @@ export default defineContentScript({
       readingSurface = range.startContainer.parentElement ?? document.body;
       updateTheme();
       opened = true;
+      focus.select(range);
       lookupView = (
         <Lookup
           key={`${source.location}:${source.start}:${Date.now()}`}
@@ -122,6 +128,22 @@ export default defineContentScript({
       );
       renderLookup();
     };
+    let hoverFrame = 0;
+    ctx.addEventListener(document, 'pointermove', (e) => {
+      cancelAnimationFrame(hoverFrame);
+      if (!config.enabled || !highlighter || e.buttons || e.composedPath().includes(ui.shadowHost)) {
+        focus.hover();
+        return;
+      }
+      hoverFrame = requestAnimationFrame(() => {
+        const range = rangeAtPoint(e.clientX, e.clientY);
+        focus.hover(range && highlighter?.marked(range) && !highlighter.ignored(range) ? range : undefined);
+      });
+    });
+    ctx.addEventListener(document, 'pointerleave', () => {
+      cancelAnimationFrame(hoverFrame);
+      focus.hover();
+    });
     ctx.addEventListener(document, 'click', async (e) => {
       if (
         !config.enabled ||
@@ -158,6 +180,8 @@ export default defineContentScript({
     ctx.onInvalidated(() => {
       close();
       unsubscribe();
+      cancelAnimationFrame(hoverFrame);
+      focus.dispose();
       highlighter?.dispose();
       themeObserver.disconnect();
       media.removeEventListener('change', updateTheme);

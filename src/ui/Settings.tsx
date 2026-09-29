@@ -41,8 +41,8 @@ export function Settings({
       ankiSequence.current++;
     };
   }, [value.ankiUrl, value.ankiKey, active]);
+  const dirty = JSON.stringify(value) !== JSON.stringify(initial);
   useEffect(() => {
-    const dirty = JSON.stringify(value) !== JSON.stringify(initial);
     const leave = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = '';
@@ -67,6 +67,7 @@ export function Settings({
       class="settings-form"
       onSubmit={async (e) => {
         e.preventDefault();
+        if (!dirty || busy) return;
         setBusy(true);
         setSuccess(false);
         const savingRevision = revision.current;
@@ -92,7 +93,7 @@ export function Settings({
             form="settings-form"
             class={`save-button ${success ? 'saved' : ''}`}
             aria-busy={busy}
-            disabled={busy}
+            disabled={busy || !dirty}
             title={success ? t('已保存') : t('保存')}
           >
             {busy && (

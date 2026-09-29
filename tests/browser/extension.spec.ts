@@ -122,6 +122,8 @@ test('network actions are explicit, drafts survive tabs, and saving does not fet
   expect(services.notes.size).toBe(0);
   await options.getByRole('button', { name: '恢复默认提示词' }).click();
   await options.getByLabel('模型', { exact: true }).fill('test-model');
+  await expect(options.getByRole('button', { name: '保存', exact: true })).toBeDisabled();
+  await prompt.fill(`${defaultPrompt}\nPrefer concise examples.`);
   await options.getByRole('button', { name: '保存', exact: true }).click();
   await expect(options.getByRole('button', { name: '保存', exact: true })).toHaveAttribute('title', '已保存');
   expect(modelRequests).toBe(2);
@@ -138,7 +140,12 @@ test('lookup saves once, stops polling, and broadcasts known state to another pa
   await page.goto(`${origin}/reading`);
   await other.goto(`${origin}/reading`);
   await page.locator('tap-gloss').waitFor({ state: 'attached' });
+  const beforeLayout = await page.locator('p').first().boundingBox();
+  await page.locator('em').hover();
+  await expect(page.locator('[data-word-focus=hover]')).toHaveCount(1);
   await page.locator('em').click();
+  await expect(page.locator('[data-word-focus=selected]')).toHaveCount(1);
+  expect(await page.locator('p').first().boundingBox()).toEqual(beforeLayout);
   const popup = page.getByRole('dialog', { name: '语境查询' });
   await expect(popup.getByRole('status')).toHaveText('已保存到 Anki');
   await expect(popup.locator('.example')).toHaveCount(3);
@@ -206,7 +213,7 @@ test('Anki night mode keeps answers legible without repeated examples', async ()
   expect(note.fields.Extra).not.toContain('She was reluctant to leave.');
   const page = await context.newPage();
   await page.setContent(
-    `<html><head><style>${cardStyle}</style></head><body class="card nightMode">${note.fields.Text!.replace(/\{\{c1::(.*?)\}\}/g, '<span class="cloze">$1</span>')}<hr>${note.fields.Extra}</body></html>`,
+    `<html><head><style>${cardStyle}</style></head><body class="card nightMode">${note.fields.Text!.replace(/\{\{c1::(.*?)\}\}/g, (_match, answer: string) => `<span class="cloze">${answer.split('::')[0]}</span>`)}<hr>${note.fields.Extra}</body></html>`,
   );
   await expect(page.locator('.cloze').first()).toHaveCSS('color', 'rgb(238, 238, 238)');
   await page.close();

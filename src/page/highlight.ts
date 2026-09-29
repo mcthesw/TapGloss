@@ -171,6 +171,10 @@ export function createHighlighter(
   document.addEventListener('visibilitychange', shown);
   return {
     refresh,
+    marked(range: Range) {
+      const word = words.get(normalize(range.toString()));
+      return !!word && !word.suppressed;
+    },
     async blocked(range: Range) {
       const form = normalize(range.toString());
       await fetchWords([form]);

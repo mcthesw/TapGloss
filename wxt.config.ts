@@ -5,7 +5,7 @@ import tailwind from '@tailwindcss/vite';
 export default defineConfig({
   imports: false,
   zip: { excludeSources: ['test-results/**', 'playwright-report/**'] },
-  vite: () => ({ plugins: [preact(), tailwind()] }),
+  vite: () => ({ build: { modulePreload: false }, plugins: [preact(), tailwind()] }),
   manifest: {
     name: 'TapGloss',
     description: '结合语境查词，生成例句并保存到 Anki。',

@@ -57,6 +57,9 @@ test('toolbar controls stop and resume live pages; built-in downloads are explic
     }, base + '/popup.html');
     const popup = await created;
     await popup.waitForLoadState();
+    await expect(popup.locator('link[rel="modulepreload"]')).toHaveCount(0);
+    await popup.emulateMedia({ colorScheme: 'dark' });
+    await popup.reload();
     await expect(popup.getByRole('button', { name: '开启', exact: true })).toBeEnabled();
     await expect(popup.getByRole('button', { name: '在此网站启用' })).toBeEnabled();
     await expect
@@ -68,6 +71,7 @@ test('toolbar controls stop and resume live pages; built-in downloads are explic
       )
       .toBe('matrix(1, 0, 0, 1, 12, 0)');
     await popup.locator('.quick-panel').screenshot({ path: 'test-results/toolbar.png' });
+    await expect(popup.locator('.quick-panel')).toHaveCSS('background-color', 'rgb(36, 36, 36)');
     await popup.getByRole('button', { name: '开启', exact: true }).click();
     await expect.poll(count).toBe(0);
     await expect.poll(otherCount).toBe(0);

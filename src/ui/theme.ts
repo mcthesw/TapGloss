@@ -1,8 +1,8 @@
 import type { Settings } from '../domain/model';
 
-export function applyTheme(target: HTMLElement, preference: Settings['theme'], page?: Element) {
+export function isDarkSurface(page?: Element) {
   let dark = matchMedia('(prefers-color-scheme: dark)').matches;
-  if (preference === 'auto' && page) {
+  if (page) {
     // Transparent page backgrounds still have a rendered canvas; use text contrast as the fallback.
     const text = getComputedStyle(page)
       .color.match(/[\d.]+/g)
@@ -18,5 +18,9 @@ export function applyTheme(target: HTMLElement, preference: Settings['theme'], p
       break;
     }
   }
-  target.dataset.theme = preference === 'auto' ? (dark ? 'dark' : 'light') : preference;
+  return dark;
+}
+
+export function applyTheme(target: HTMLElement, preference: Settings['theme'], page?: Element) {
+  target.dataset.theme = preference === 'auto' ? (isDarkSurface(page) ? 'dark' : 'light') : preference;
 }

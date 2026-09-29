@@ -6,7 +6,7 @@ import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { send, subscribeChanges } from '../src/messages';
 import { rangeAtPoint, sourceFromRange } from '../src/page/selection';
 import { createHighlighter } from '../src/page/highlight';
-import { applyTheme } from '../src/ui/theme';
+import { applyTheme, isDarkSurface } from '../src/ui/theme';
 import { Lookup } from '../src/ui/Lookup';
 import { LocaleContext, resolveLocale } from '../src/ui/i18n';
 import '../src/ui/style.css';
@@ -43,7 +43,9 @@ export default defineContentScript({
       },
     });
     ui.mount();
-    const focus = createWordFocus(feedback!);
+    const focus = createWordFocus(feedback!, (range) =>
+      isDarkSurface(range.startContainer.parentElement ?? undefined),
+    );
     let readingSurface: Element = document.body;
     let lookupView: VNode | undefined;
     const renderLookup = () =>

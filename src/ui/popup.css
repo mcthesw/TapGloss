@@ -2,6 +2,8 @@
   width: 280px;
   padding: 18px;
   box-sizing: border-box;
+  background: var(--surface);
+  border: 1px solid var(--border);
 }
 .quick-row {
   display: flex;
@@ -29,4 +31,9 @@
 }
 .quick-nav button {
   font-size: 13px;
+}
+
+[data-theme='dark'] .quick-panel {
+  background: #242424;
+  border-color: #484848;
 }

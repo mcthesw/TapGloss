@@ -150,6 +150,17 @@ test('lookup saves once, stops polling, and broadcasts known state to another pa
   await expect(popup.getByRole('status')).toHaveText('已保存到 Anki');
   await expect(popup.locator('.example')).toHaveCount(3);
   await page.screenshot({ path: 'test-results/lookup.png' });
+  await page.evaluate(() => {
+    document.body.style.background = '#171717';
+    document.body.style.color = '#eeeeee';
+    window.dispatchEvent(new Event('resize'));
+  });
+  await expect(page.locator('[data-word-focus=selected]')).toHaveCSS(
+    'background-color',
+    'rgba(231, 203, 113, 0.25)',
+  );
+  await page.screenshot({ path: 'test-results/lookup-dark.png' });
+
   const before = services.counts();
   await popup.getByRole('button', { name: '认识了', exact: true }).click();
   await expect(popup.getByRole('button', { name: '恢复学习' })).toBeVisible();

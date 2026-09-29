@@ -149,6 +149,22 @@ test('lookup saves once, stops polling, and broadcasts known state to another pa
   const popup = page.getByRole('dialog', { name: '语境查询' });
   await expect(popup.getByRole('status')).toHaveText('已保存到 Anki');
   await expect(popup.locator('.example')).toHaveCount(3);
+  const initial = (await popup.boundingBox())!;
+  const grip = popup.getByRole('button', { name: '移动浮窗' });
+  const gripBox = (await grip.boundingBox())!;
+  await page.mouse.move(gripBox.x + gripBox.width / 2, gripBox.y + gripBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(gripBox.x + gripBox.width / 2 - 80, gripBox.y + gripBox.height / 2 + 40, {
+    steps: 6,
+  });
+  await page.mouse.up();
+  await expect.poll(async () => (await popup.boundingBox())!.x).toBeCloseTo(initial.x - 80, 0);
+  const dragged = (await popup.boundingBox())!;
+  await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+  await expect.poll(async () => (await popup.boundingBox())!.x).toBeCloseTo(dragged.x, 0);
+  await grip.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await popup.boundingBox())!.x).toBeCloseTo(dragged.x + 16, 0);
   await page.screenshot({ path: 'test-results/lookup.png' });
   await page.evaluate(() => {
     document.body.style.background = '#171717';
@@ -492,4 +508,35 @@ test('wordlists have their own page, update reading reminders and support Englis
   await expect(options.getByRole('heading', { name: 'Common', exact: true })).toHaveCount(0);
   await expect.poll(highlighted).toContain('rain');
   await reading.close();
+});
+
+test('single Latin letters stay plain but remain available through explicit selection', async () => {
+  const page = await context.newPage();
+  await page.goto(`${origin}/reading`);
+  await page.locator('tap-gloss').waitFor({ state: 'attached' });
+  await page.evaluate(() => {
+    const p = document.createElement('p');
+    p.innerHTML = '<span id="letter">I</span> <span id="accent">é</span> <span id="han">猫</span>';
+    document.body.prepend(p);
+  });
+  const highlighted = () =>
+    page.evaluate(() => {
+      const css = CSS as typeof CSS & { highlights: Map<string, Set<Range>> };
+      return [...(css.highlights.get('tapgloss-new') ?? [])].map((range) => range.toString());
+    });
+  await expect.poll(highlighted).toContain('猫');
+  expect(await highlighted()).not.toContain('I');
+  expect(await highlighted()).not.toContain('é');
+  await page.locator('#letter').click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.locator('#letter').evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el.firstChild!);
+    const selection = getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+  await page.keyboard.press('Alt+q');
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.close();
 });

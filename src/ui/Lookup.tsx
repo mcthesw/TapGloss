@@ -1,8 +1,9 @@
 import { useI18n } from './i18n';
-import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { send, subscribeChanges } from '../messages';
 import { vocabularyId, type RecordView, type Source } from '../domain/model';
 import { Examples } from './Material';
+import { useFloatingPosition } from './use-floating-position';
 
 export function Lookup({ source, x, y, close }: { source: Source; x: number; y: number; close: () => void }) {
   const t = useI18n();
@@ -12,24 +13,7 @@ export function Lookup({ source, x, y, close }: { source: Source; x: number; y: 
   const [deleteAnki, setDeleteAnki] = useState(false);
   const [busy, setBusy] = useState(false);
   const root = useRef<HTMLElement>(null);
-  const [position, setPosition] = useState({ left: 12, top: 12 });
-  useLayoutEffect(() => {
-    const place = () => {
-      const rect = root.current!.getBoundingClientRect();
-      const left = Math.max(12, Math.min(x, window.innerWidth - rect.width - 12));
-      const preferred = y + 12 + rect.height <= window.innerHeight - 12 ? y + 12 : y - rect.height - 12;
-      const top = Math.max(12, Math.min(preferred, window.innerHeight - rect.height - 12));
-      setPosition((old) => (old.left === left && old.top === top ? old : { left, top }));
-    };
-    place();
-    const observer = new ResizeObserver(place);
-    observer.observe(root.current!);
-    window.addEventListener('resize', place);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', place);
-    };
-  }, [x, y]);
+  const { position, handle } = useFloatingPosition(root, x, y);
   useEffect(() => {
     let disposed = false,
       sequence = 0,
@@ -80,6 +64,9 @@ export function Lookup({ source, x, y, close }: { source: Source; x: number; y: 
       style={position}
       onClick={(e) => e.stopPropagation()}
     >
+      <button class="lookup-drag" aria-label={t('移动浮窗')} title={t('拖动以移动')} {...handle}>
+        <span aria-hidden="true" />
+      </button>
       <header class="lookup-header">
         <div class="lookup-term">
           <h2>{material?.lemma ?? source.sentence.slice(source.start, source.end)}</h2>

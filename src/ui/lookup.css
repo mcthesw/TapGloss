@@ -148,3 +148,36 @@
   width: 16px;
   height: 16px;
 }
+
+.lookup .lookup-drag {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  width: 100%;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.lookup-drag span {
+  width: 30px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--muted);
+  opacity: 0.45;
+}
+.lookup-drag:hover span,
+.lookup-drag:focus-visible span {
+  opacity: 0.85;
+}
+.lookup .lookup-drag:active {
+  cursor: grabbing;
+}
+.lookup-header {
+  padding-top: 4px;
+}

@@ -49,6 +49,11 @@ export function Settings({
     if (dirty) window.addEventListener('beforeunload', leave);
     return () => window.removeEventListener('beforeunload', leave);
   }, [value, initial]);
+  useEffect(() => {
+    if (!success) return;
+    const timer = setTimeout(() => setSuccess(false), 1500);
+    return () => clearTimeout(timer);
+  }, [success]);
   const revision = useRef(0);
   const change = (patch: Partial<Configuration>) => {
     revision.current++;

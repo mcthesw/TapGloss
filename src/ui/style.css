@@ -11,9 +11,55 @@
   gap: 20px;
   align-content: start;
 }
-.wordlist-card > button {
-  justify-self: start;
+.wordlist-card .settings-heading {
+  align-items: flex-start;
 }
+.wordlist-card p {
+  margin: 4px 0 0;
+}
+.wordlist-card .wordlist-remove {
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  color: var(--muted);
+}
+.wordlist-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: start;
+  padding: 0;
+  font-size: 13px;
+}
+.toggle-track {
+  width: 28px;
+  height: 16px;
+  border-radius: 10px;
+  background: var(--border);
+  padding: 3px;
+  box-sizing: border-box;
+}
+.toggle-track::after {
+  content: '';
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 160ms;
+}
+.wordlist-toggle[aria-pressed='true'] .toggle-track::after {
+  transform: translateX(12px);
+  background: var(--text);
+}
+textarea,
+.select-menu,
+.lookup-body,
+.lookup-header {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
 .wordlist-card h2 {
   overflow-wrap: anywhere;
 }
@@ -351,9 +397,19 @@ summary {
 .app-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 24px;
   margin-bottom: 28px;
+}
+.page-title {
+  min-width: 0;
+  flex: 1;
+}
+.record-search {
+  display: block;
+  width: min(100%, 360px);
+  margin-top: 16px;
+  font-size: 14px;
 }
 .header-controls {
   display: flex;
@@ -367,8 +423,7 @@ summary {
   gap: 4px;
 }
 .page-nav {
-  padding-right: 20px;
-  border-right: 1px solid var(--border);
+  gap: 6px;
 }
 .page-nav button {
   border-color: transparent;
@@ -377,15 +432,31 @@ summary {
 }
 .page-nav button[aria-current='page'] {
   color: var(--text);
-  background: var(--hover);
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 8px;
+  text-decoration-thickness: 2px;
 }
 .page-actions {
   min-width: 100px;
   justify-content: flex-end;
 }
+.view-switch {
+  display: flex;
+  gap: 2px;
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 3px;
+}
 .view-switch button {
+  border: 0;
+  background: transparent;
   font-size: 13px;
   padding: 7px 10px;
+}
+.view-switch button[aria-pressed='true'] {
+  background: var(--hover);
+  box-shadow: none;
 }
 .settings-columns {
   display: flex;
@@ -422,6 +493,10 @@ summary {
   position: relative;
   min-width: 80px;
   height: 36px;
+  transition:
+    background-color 180ms,
+    border-color 180ms,
+    color 180ms;
   padding: 6px 18px;
   font-size: 14px;
 }
@@ -454,6 +529,10 @@ summary {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .save-button,
+  .toggle-track::after {
+    transition: none;
+  }
   .save-ring rect {
     animation-duration: 3s;
   }

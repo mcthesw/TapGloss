@@ -34,7 +34,7 @@ export const english: Record<string, string> = {
   重试删除: 'Retry deletion',
   '读取中…': 'Loading…',
   没有匹配的记录: 'No matching records',
-  从一个想了解的词开始: 'Start with a word you want to understand',
+  暂无记录: 'No records yet',
   '在网页上点选词语，语境和例句就会留在这里。':
     'Click a word on a webpage to keep its context and examples here.',
   '查看 {0} 详情': 'Details for {0}',
@@ -133,7 +133,7 @@ export const english: Record<string, string> = {
   导入词表: 'Import wordlist',
   选择词表文件: 'Choose a wordlist file',
   '词表文件不能超过 10 MB': 'Wordlist files must be under 10 MB',
-  让阅读提醒更适合你: 'Make reading reminders your own',
+  暂无词表: 'No wordlists yet',
   '导入自己的词表，减少熟悉词语的提醒，或专注于想学的词语。':
     'Import a wordlist to hide familiar words or focus on words you want to learn.',
   个词语: 'words',
@@ -142,7 +142,7 @@ export const english: Record<string, string> = {
   提醒用途: 'Use for reminders',
   忽略表内词: 'Ignore listed words',
   只提醒表内词: 'Only highlight listed words',
-  '✓ 已启用': '✓ Enabled',
+  已启用: 'Enabled',
   已停用: 'Disabled',
   词表帮助: 'Wordlist help',
   '支持 UTF-8 的 TXT、CSV 和 TSV，每份最多十万个词语。多份“只提醒表内词”合并生效，“忽略表内词”从中排除；个人明确标记的学习中或认识状态优先。移除词表不删除学习记录。':

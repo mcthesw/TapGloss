@@ -81,8 +81,7 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
       )}
       {!lists.length && (
         <section class="empty-records">
-          <h2>{t('让阅读提醒更适合你')}</h2>
-          <p class="muted">{t('导入自己的词表，减少熟悉词语的提醒，或专注于想学的词语。')}</p>
+          <h2>{t('暂无词表')}</h2>
         </section>
       )}
       <div class="wordlist-list">
@@ -96,7 +95,7 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
                 </p>
               </div>
               <button
-                class="quiet"
+                class="quiet wordlist-remove"
                 aria-label={t('移除词表 {0}', list.name)}
                 title={t('移除词表')}
                 disabled={busy}
@@ -116,7 +115,7 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
               }
             />
             <button
-              class="quiet"
+              class="quiet wordlist-toggle"
               aria-pressed={list.enabled}
               disabled={busy}
               onClick={() =>
@@ -125,7 +124,8 @@ export function Wordlists({ actions }: { actions: HTMLElement | null }) {
                 )
               }
             >
-              {list.enabled ? t('✓ 已启用') : t('已停用')}
+              <span class="toggle-track" aria-hidden="true" />
+              {list.enabled ? t('已启用') : t('已停用')}
             </button>
           </section>
         ))}

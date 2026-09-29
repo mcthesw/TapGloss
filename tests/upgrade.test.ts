@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { Database } from '../src/storage/database';
 import { Worker } from '../src/storage/worker';
 import { Anki, noteFields } from '../src/anki/client';
-import { cardStyle, legacyCardStyle } from '../src/anki/template';
+import { cardStyle, legacyCardStyle, previousCardStyle } from '../src/anki/template';
 import { hash } from '../src/domain/model';
 import { fakeServices, material, settings, source } from './fixtures';
 
@@ -71,7 +71,7 @@ it('upgrades stored notes in place while preserving deleted entries and blocked 
   }
 });
 
-it.each([legacyCardStyle, '/* my custom theme */ .card{color:blue}'])(
+it.each([legacyCardStyle, previousCardStyle, '/* my custom theme */ .card{color:blue}'])(
   'only upgrades an unchanged shipped stylesheet',
   async (existing) => {
     const services = fakeServices();
@@ -83,6 +83,6 @@ it.each([legacyCardStyle, '/* my custom theme */ .card{color:blue}'])(
       return services.fetcher(input, init);
     });
     await new Anki(settings).setup();
-    expect(updates).toEqual(existing === legacyCardStyle ? [cardStyle] : []);
+    expect(updates).toEqual([legacyCardStyle, previousCardStyle].includes(existing) ? [cardStyle] : []);
   },
 );

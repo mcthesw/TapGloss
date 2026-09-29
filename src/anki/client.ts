@@ -1,4 +1,4 @@
-import { cardStyle, legacyCardStyle } from './template';
+import { cardStyle, legacyCardStyle, previousCardStyle } from './template';
 import { z } from 'zod';
 import { hash, type Capture, type Entry, type Material, type Settings } from '../domain/model';
 import { fetchService, httpFailure } from '../domain/failure';
@@ -83,7 +83,7 @@ export class Anki {
       throw new Error('已有 TapGloss 笔记类型不兼容，请在 Anki 中检查，未修改现有模板');
     const style = z.object({ css: z.string() }).parse(await this.call('modelStyling', { modelName }));
     // Only replace the exact shipped stylesheet; preserve personal template changes.
-    if (style.css.trim() === legacyCardStyle.trim())
+    if ([legacyCardStyle, previousCardStyle].some((css) => style.css.trim() === css.trim()))
       await this.call('updateModelStyling', { model: { name: modelName, css: cardStyle } });
     await this.call('createDeck', { deck: this.settings.deck });
   }

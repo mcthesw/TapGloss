@@ -106,9 +106,19 @@ export function App() {
     <LocaleContext.Provider value={locale}>
       <main class="app-page">
         <header class="app-header">
-          <div>
+          <div class="page-title">
             <h1 class="brand">TapGloss.</h1>
-            <p class="muted mt-1">{t('点一下，理解语境，记住表达。')}</p>
+            {tab === 'records' && (
+              <input
+                ref={searchInput}
+                maxLength={200}
+                class="record-search"
+                aria-label={t('搜索记录')}
+                placeholder={t('搜索词语或原句…')}
+                value={search}
+                onInput={(e) => setSearch(e.currentTarget.value)}
+              />
+            )}
           </div>
           <div class="header-controls">
             <nav class="page-nav" aria-label={t('页面')}>
@@ -168,15 +178,6 @@ export function App() {
         )}
         {tab === 'records' && (
           <>
-            <input
-              ref={searchInput}
-              maxLength={200}
-              class="mb-6"
-              aria-label={t('搜索记录')}
-              placeholder={t('搜索词语或原句…')}
-              value={search}
-              onInput={(e) => setSearch(e.currentTarget.value)}
-            />
             {deletions.map((job) => (
               <div class="notice mb-4" key={job.id}>
                 {t(job.error || '正在删除 Anki 笔记…')}
@@ -194,8 +195,7 @@ export function App() {
             ))}
             {!page.records.length && (
               <section class="empty-records">
-                <h2>{busy ? t('读取中…') : query ? t('没有匹配的记录') : t('从一个想了解的词开始')}</h2>
-                {!query && !busy && <p class="muted">{t('在网页上点选词语，语境和例句就会留在这里。')}</p>}
+                <h2>{busy ? t('读取中…') : query ? t('没有匹配的记录') : t('暂无记录')}</h2>
               </section>
             )}
             <div class={compact ? 'word-list' : 'summary-list'} aria-busy={busy}>

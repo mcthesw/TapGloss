@@ -90,6 +90,7 @@ test.beforeAll(async () => {
   await options.getByLabel('AnkiConnect 地址', { exact: true }).fill(`${origin}/anki`);
   await options.getByRole('button', { name: '保存', exact: true }).click();
   await expect(options.getByRole('button', { name: '保存', exact: true })).toHaveAttribute('title', '已保存');
+  await expect(options.getByRole('button', { name: '保存', exact: true })).not.toHaveClass(/saved/);
 });
 
 test.afterAll(async () => {
@@ -207,7 +208,7 @@ test('Anki night mode keeps answers legible without repeated examples', async ()
   await page.setContent(
     `<html><head><style>${cardStyle}</style></head><body class="card nightMode">${note.fields.Text!.replace(/\{\{c1::(.*?)\}\}/g, '<span class="cloze">$1</span>')}<hr>${note.fields.Extra}</body></html>`,
   );
-  await expect(page.locator('.cloze').first()).toHaveCSS('color', 'rgb(164, 217, 180)');
+  await expect(page.locator('.cloze').first()).toHaveCSS('color', 'rgb(238, 238, 238)');
   await page.close();
 });
 
@@ -386,7 +387,7 @@ test('wordlists have their own page, update reading reminders and support Englis
     });
   await expect.poll(highlighted).toContain('garden');
   expect(await highlighted()).not.toContain('rain');
-  await options.getByRole('button', { name: '✓ 已启用', exact: true }).click();
+  await options.getByRole('button', { name: '已启用', exact: true }).click();
   await expect.poll(highlighted).toContain('rain');
   await options.getByRole('button', { name: '已停用', exact: true }).click();
   await expect.poll(highlighted).not.toContain('rain');

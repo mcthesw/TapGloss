@@ -70,9 +70,18 @@ test('toolbar controls stop and resume live pages; built-in downloads are explic
           .evaluate((el) => getComputedStyle(el, '::after').transform),
       )
       .toBe('matrix(1, 0, 0, 1, 12, 0)');
+    const checkAlignment = async () => {
+      const positions = await popup
+        .locator('.toggle-track')
+        .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().left));
+      expect(positions).toHaveLength(2);
+      expect(Math.abs(positions[0]! - positions[1]!)).toBeLessThan(0.5);
+    };
+    await checkAlignment();
     await popup.locator('.quick-panel').screenshot({ path: 'test-results/toolbar.png' });
     await expect(popup.locator('.quick-panel')).toHaveCSS('background-color', 'rgb(36, 36, 36)');
     await popup.getByRole('button', { name: '开启', exact: true }).click();
+    await checkAlignment();
     await expect.poll(count).toBe(0);
     await expect.poll(otherCount).toBe(0);
     await reading.reload();
@@ -117,6 +126,21 @@ test('toolbar controls stop and resume live pages; built-in downloads are explic
     await options.getByRole('button', { name: '添加词表', exact: true }).click();
     await expect(row.getByRole('button', { name: '已添加' })).toBeDisabled();
     expect(await worker.evaluate(() => (globalThis as unknown as { downloads: number }).downloads)).toBe(1);
+    await options.getByRole('dialog').getByRole('button', { name: '关闭', exact: true }).click();
+    await options.getByRole('button', { name: '设置', exact: true }).click();
+    await options.getByLabel('界面语言', { exact: true }).click();
+    await options.getByRole('option', { name: 'English', exact: true }).click();
+    await options.getByRole('button', { name: '保存', exact: true }).click();
+    await reading.bringToFront();
+    await popup.reload();
+    await expect(popup.getByRole('button', { name: 'On', exact: true })).toBeEnabled();
+    await expect(popup.getByRole('button', { name: 'Enable on this site' })).toBeEnabled();
+    await checkAlignment();
+    await popup.locator('.quick-host').evaluate((el) => {
+      el.textContent = 'a-very-long-subdomain.example.org';
+    });
+    await checkAlignment();
+    await popup.locator('.quick-panel').screenshot({ path: 'test-results/toolbar-english-long-host.png' });
   } finally {
     await c.close();
     await new Promise<void>((r) => server.close(() => r()));

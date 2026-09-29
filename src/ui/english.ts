@@ -1,4 +1,13 @@
 export const english: Record<string, string> = {
+  开启: 'On',
+  已暂停: 'Paused',
+  在此网站启用: 'Enable on this site',
+  此页面不支持: 'Unavailable on this page',
+  '此页面未连接，请刷新网页后重试': 'Page not connected. Refresh it and try again.',
+  已停用的网站: 'Disabled sites',
+  恢复启用: 'Enable again',
+  阅读功能已暂停: 'Reading is paused',
+
   纯数字不需要查询: 'Numbers do not need a lookup',
   '已获取 {0} 个模型': '{0} models found',
   '未找到模型，可以手动填写名称。': 'No models found. Enter a model name manually.',

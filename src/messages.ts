@@ -1,3 +1,4 @@
+import type { ReadingControls } from './domain/reading';
 import { browser } from 'wxt/browser';
 import { z } from 'zod';
 import {
@@ -17,6 +18,20 @@ export const requestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('read'), data: z.string().max(100) }),
   z.object({ type: z.literal('vocabulary'), data: z.array(z.string().max(200)).max(1000).default([]) }),
   z.object({ type: z.literal('readingSettings') }),
+  z.object({ type: z.literal('readingControls') }),
+  z.object({
+    type: z.literal('changeReadingControls'),
+    data: z.object({
+      enabled: z.boolean().optional(),
+      hostname: z
+        .string()
+        .min(1)
+        .max(253)
+        .regex(/^[a-z0-9.:[\]-]+$/i)
+        .optional(),
+      siteEnabled: z.boolean().optional(),
+    }),
+  }),
   z.object({ type: z.literal('readingWords'), data: z.array(z.string().max(200)).max(1000) }),
   z.object({ type: z.literal('wordlists') }),
   z.object({ type: z.literal('importWordlist'), data: wordlistImport }),
@@ -79,7 +94,10 @@ type Results = {
   wordlists: Wordlist[];
   importWordlist: string;
   changeWordlist: void;
+  readingControls: ReadingControls;
+  changeReadingControls: ReadingControls;
   readingSettings: {
+    enabled: boolean;
     gesture: 'click' | 'alt';
     configured: boolean;
     theme: 'auto' | 'light' | 'dark';

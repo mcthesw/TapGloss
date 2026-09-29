@@ -1,3 +1,4 @@
+import { DisabledSites } from './DisabledSites';
 import { useI18n } from './i18n';
 import { createPortal } from 'preact/compat';
 import { useEffect, useRef, useState } from 'preact/hooks';
@@ -147,6 +148,7 @@ export function Settings({
               ]}
               change={(theme) => change({ theme: theme as Configuration['theme'] })}
             />
+            <DisabledSites />
             <ExcludedLanguages
               value={value.excludedLanguages}
               change={(excludedLanguages) => change({ excludedLanguages })}

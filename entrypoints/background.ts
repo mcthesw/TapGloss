@@ -1,3 +1,5 @@
+import { createReadingControls } from '../src/reading/controls';
+import { readingEnabled } from '../src/domain/reading';
 import { defineBackground } from 'wxt/utils/define-background';
 import { browser } from 'wxt/browser';
 import { settingsSchema, normalize } from '../src/domain/model';
@@ -44,6 +46,7 @@ export default defineBackground(() => {
       }
     }, 30);
   };
+  const controls = createReadingControls(() => notify({ settings: true }));
   const worker = new Worker(db, settings, (vocabulary) =>
     notify({ records: true, ...(vocabulary ? { vocabulary: true } : {}) }),
   );
@@ -87,9 +90,6 @@ export default defineBackground(() => {
   browser.runtime.onStartup.addListener(() => {
     void wake();
   });
-  (browser.action ?? browser.browserAction).onClicked.addListener(() => {
-    void browser.runtime.openOptionsPage();
-  });
   browser.runtime.onInstalled.addListener((details) => {
     if (details.reason === 'install') void browser.runtime.openOptionsPage();
     void wake();
@@ -119,6 +119,7 @@ export default defineBackground(() => {
       let runJobs = false;
       switch (request.type) {
         case 'lookup':
+          if (!readingEnabled(await controls.read(), request.data.url)) throw new Error('阅读功能已暂停');
           data = await capture(db, request.data);
           change = { records: true };
           runJobs = true;
@@ -146,9 +147,16 @@ export default defineBackground(() => {
             ? await db.vocabulary.where('forms').anyOf(request.data.map(normalize)).distinct().toArray()
             : [];
           break;
+        case 'readingControls':
+          data = await controls.read();
+          break;
+        case 'changeReadingControls':
+          data = await controls.change(request.data);
+          break;
         case 'readingSettings': {
           const s = await settings();
           data = {
+            enabled: readingEnabled(await controls.read(), sender.url),
             gesture: s.gesture,
             theme: s.theme,
             interfaceLanguage: s.interfaceLanguage,

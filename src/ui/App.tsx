@@ -12,7 +12,11 @@ export function App() {
   const [actionHost, setActionHost] = useState<HTMLDivElement | null>(null);
   const [compact, setCompact] = useState(() => localStorage.getItem('record-density') === 'compact');
   const [config, setConfig] = useState<Configuration>(),
-    [tab, setTab] = useState('records');
+    [tab, setTab] = useState(
+      ['records', 'wordlists', 'settings'].includes(location.hash.slice(1))
+        ? location.hash.slice(1)
+        : 'records',
+    );
   const locale = resolveLocale(config?.interfaceLanguage ?? 'auto');
   const t = (text: string, ...values: (string | number | undefined)[]) => translate(text, locale, ...values);
   useEffect(() => {
@@ -28,7 +32,7 @@ export function App() {
     [busy, setBusy] = useState(false);
   const [deletions, setDeletions] = useState<Job[]>([]);
   const searchInput = useRef<HTMLInputElement>(null);
-  const userNavigated = useRef(false);
+  const userNavigated = useRef(!!location.hash);
   const selectTab = (next: string) => {
     userNavigated.current = true;
     setTab(next);

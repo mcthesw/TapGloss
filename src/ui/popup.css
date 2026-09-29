@@ -1,0 +1,32 @@
+.quick-panel {
+  width: 280px;
+  padding: 18px;
+  box-sizing: border-box;
+}
+.quick-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.quick-row h1 {
+  font-size: 20px;
+}
+.quick-host {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+}
+.quick-row button {
+  flex-shrink: 0;
+}
+.quick-nav {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.quick-nav button {
+  font-size: 13px;
+}

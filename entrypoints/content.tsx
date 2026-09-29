@@ -1,3 +1,4 @@
+import { browser } from 'wxt/browser';
 import { render, type VNode } from 'preact';
 import { defineContentScript } from 'wxt/utils/define-content-script';
 import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
@@ -16,6 +17,12 @@ export default defineContentScript({
     const initial = await send({ type: 'readingSettings' }).catch(() => undefined);
     if (!initial || ctx.isInvalid) return;
     let config = initial;
+    const probe = (message: unknown) =>
+      message && typeof message === 'object' && 'type' in message && message.type === 'readingProbe'
+        ? Promise.resolve(true)
+        : undefined;
+    browser.runtime.onMessage.addListener(probe);
+    ctx.onInvalidated(() => browser.runtime.onMessage.removeListener(probe));
     let container: HTMLElement,
       opened = false,
       clickSequence = 0;
@@ -56,24 +63,34 @@ export default defineContentScript({
     style.textContent =
       '::highlight(tapgloss-new){background-color:#88888820}::highlight(tapgloss-learning){background-color:#dcc46860}';
     document.head.append(style);
-    const highlighter = createHighlighter(
-      (forms) => send({ type: 'readingWords', data: forms }),
-      config.excludedLanguages,
-    );
+    let highlighter: ReturnType<typeof createHighlighter> | undefined;
+    const updateReading = () => {
+      if (config.enabled) {
+        highlighter ??= createHighlighter(
+          (forms) => send({ type: 'readingWords', data: forms }),
+          config.excludedLanguages,
+        );
+      } else {
+        highlighter?.dispose();
+        highlighter = undefined;
+        close();
+      }
+    };
     let lastExclusions = JSON.stringify(config.excludedLanguages);
     const refreshSettings = async () => {
       config = await send({ type: 'readingSettings' });
+      updateReading();
       if (opened) renderLookup();
       updateTheme();
       const next = JSON.stringify(config.excludedLanguages);
       if (next !== lastExclusions) {
         lastExclusions = next;
-        highlighter.refresh(config.excludedLanguages);
+        highlighter?.refresh(config.excludedLanguages);
       }
     };
     const unsubscribe = subscribeChanges((change) => {
       if (change.settings || change.initial) void refreshSettings().catch(() => {});
-      if (change.vocabulary || change.initial) highlighter.refresh();
+      if (change.vocabulary || change.initial) highlighter?.refresh();
     });
     const close = () => {
       clickSequence++;
@@ -81,7 +98,9 @@ export default defineContentScript({
       lookupView = undefined;
       opened = false;
     };
+    updateReading();
     const query = (range: Range, x: number, y: number) => {
+      if (!config.enabled) return;
       clickSequence++;
       const source = sourceFromRange(range);
       if (!source) return;
@@ -104,7 +123,14 @@ export default defineContentScript({
       renderLookup();
     };
     ctx.addEventListener(document, 'click', async (e) => {
-      if (!e.isTrusted || e.button !== 0 || e.composedPath().includes(ui.shadowHost)) return;
+      if (
+        !config.enabled ||
+        !highlighter ||
+        !e.isTrusted ||
+        e.button !== 0 ||
+        e.composedPath().includes(ui.shadowHost)
+      )
+        return;
       if (opened) close();
       const sequence = ++clickSequence;
       if (config.gesture === 'alt' && !e.altKey) return;
@@ -132,7 +158,7 @@ export default defineContentScript({
     ctx.onInvalidated(() => {
       close();
       unsubscribe();
-      highlighter.dispose();
+      highlighter?.dispose();
       themeObserver.disconnect();
       media.removeEventListener('change', updateTheme);
       style.remove();

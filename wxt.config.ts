@@ -8,10 +8,10 @@ export default defineConfig({
   vite: () => ({ plugins: [preact(), tailwind()] }),
   manifest: {
     name: 'TapGloss',
-    description: '点一下，理解语境，记住表达。',
+    description: '结合语境查词，生成例句并保存到 Anki。',
     permissions: ['storage', 'alarms'],
     host_permissions: ['http://*/*', 'https://*/*'],
-    action: { default_title: 'TapGloss · 记录与设置' },
+    action: { default_title: 'TapGloss' },
     browser_specific_settings: {
       gecko: {
         id: 'tapgloss@tapgloss.local',

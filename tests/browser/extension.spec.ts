@@ -270,6 +270,28 @@ test('language exclusion updates existing pages and dynamic text while preservin
     document.body.append(p);
   });
   await expect.poll(() => highlighted('#dynamic')).toBe(true);
+  await page.evaluate(() => {
+    const chat = document.createElement('section');
+    chat.innerHTML =
+      '<div><span lang="ja">ネクサスD</span><span id="chat-long">:打完放弃一下</span></div><div><span>句子</span><span id="chat-short">:看消息</span></div><div><span>ネクサスD</span><span id="chat-mixed">:2pro的摇杆好爽</span></div><div lang="ja"><span id="chat-japanese">これは漢字を含む日本語です。</span></div>';
+    document.body.append(chat);
+  });
+  await expect.poll(() => highlighted('#chat-japanese')).toBe(true);
+  await expect.poll(() => highlighted('#chat-long')).toBe(false);
+  await expect.poll(() => highlighted('#chat-short')).toBe(false);
+  await page.locator('#chat-short').evaluate((el) => {
+    el.textContent = ':铜耶';
+  });
+  await expect.poll(() => highlighted('#chat-short')).toBe(false);
+  expect(
+    await page.locator('#chat-mixed').evaluate((el) => {
+      const ranges = (CSS as unknown as { highlights: Map<string, Set<Range>> }).highlights.get(
+        'tapgloss-new',
+      );
+      return [...(ranges ?? [])].filter((r) => el.contains(r.startContainer)).map((r) => r.toString());
+    }),
+  ).not.toEqual(expect.arrayContaining(['摇杆', '好爽']));
+  await page.screenshot({ path: 'test-results/chat-language-filter.png', fullPage: true });
   await options.getByRole('button', { name: '移除中文', exact: true }).click();
   await options.getByRole('button', { name: '保存', exact: true }).click();
   await expect.poll(() => highlighted('#chinese')).toBe(true);

@@ -25,11 +25,22 @@ export function isExcludedLanguage(
   detected: string | undefined,
   hint: string,
   excluded: readonly string[],
+  context = '',
 ) {
   const letters = word.normalize('NFC').replace(/[^\p{L}]/gu, '');
   const declared = hint.toLowerCase().split(/[-_]/)[0];
   // Han-only fragments are ambiguous between Chinese and Japanese; use an authored hint.
-  const language = declared === 'ja' && scripts.zh!.test(letters) ? 'ja' : (detected ?? declared);
+  const han = scripts.zh!.test(letters);
+  const japanese = /[\p{Script=Hiragana}\p{Script=Katakana}]/u.test(context);
+  const korean = /\p{Script=Hangul}/u.test(context);
+  const language =
+    han && (declared === 'ja' || japanese)
+      ? 'ja'
+      : han && (declared === 'ko' || korean)
+        ? 'ko'
+        : han && !detected && context.trim()
+          ? 'zh'
+          : (detected ?? declared);
   return !!language && excluded.includes(language) && (scripts[language] ?? latin).test(letters);
 }
 
@@ -58,9 +69,17 @@ export function languageFilter(excluded: readonly string[]) {
     );
     const relative = position - (sentence?.index ?? 0);
     const start = Math.max(0, Math.floor(relative / 400) * 400 - 100);
-    const text = (sentence?.segment ?? node.data).slice(start, start + 600);
+    const whole = sentence?.segment ?? node.data;
+    // Chat nicknames and messages often share one block but are separate language contexts.
+    const colon = Math.max(whole.lastIndexOf(':', relative), whole.lastIndexOf('：', relative));
+    const end = [
+      whole.indexOf(':', relative + word.length),
+      whole.indexOf('：', relative + word.length),
+    ].filter((i) => i >= 0);
+    const fragment = whole.slice(colon + 1, end.length ? Math.min(...end) : undefined);
+    const text = colon >= 0 || end.length ? fragment.slice(0, 600) : whole.slice(start, start + 600);
     if (!cache.has(text)) cache.set(text, identifyLanguage(text));
     const hint = node.parentElement?.closest('[lang]')?.getAttribute('lang') ?? '';
-    return isExcludedLanguage(word, cache.get(text), hint, excluded);
+    return isExcludedLanguage(word, cache.get(text), hint, excluded, text);
   };
 }

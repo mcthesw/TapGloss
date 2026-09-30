@@ -203,6 +203,16 @@ it.skipIf(!process.env.TAPGLOSS_FIREFOX_TEST)(
           2,
         ),
       );
+    } catch (error) {
+      await mkdir('.output/firefox-review', { recursive: true });
+      for (const [i, driver] of drivers.entries()) {
+        await writeFile(`.output/firefox-review/failure-${i}.png`, await driver.takeScreenshot(), 'base64');
+        await writeFile(
+          `.output/firefox-review/failure-${i}.txt`,
+          await driver.findElement(By.css('body')).getText(),
+        );
+      }
+      throw error;
     } finally {
       await Promise.all(drivers.map((driver) => driver.quit()));
       await new Promise<void>((done) => api.close(() => done()));

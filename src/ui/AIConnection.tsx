@@ -1,5 +1,5 @@
 import { useI18n } from './i18n';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { Settings } from '../domain/model';
 import { send } from '../messages';
 import { defaultPrompt } from '../explain/prompt';
@@ -50,7 +50,8 @@ export function AIConnection({
       if (id === sequence.current) setLoading(false);
     }
   };
-  useEffect(() => {
+  // Reset during the form commit so a deferred cleanup cannot cancel a newly requested connection.
+  useLayoutEffect(() => {
     setModels([]);
     setModelNotice('');
     setLoading(false);
@@ -61,14 +62,14 @@ export function AIConnection({
       sequence.current++;
     };
   }, [value.baseUrl, value.apiKey]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!active) {
       discovery.current?.abort();
       sequence.current++;
       setLoading(false);
     }
   }, [active]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     testingRequest.current?.abort();
     setTestNotice('');
     setTesting(false);

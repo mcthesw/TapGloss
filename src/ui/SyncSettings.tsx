@@ -1,5 +1,5 @@
 import { useI18n } from './i18n';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { send, subscribeChanges } from '../messages';
 import type { SyncSettings as Configuration, SyncStatus } from '../domain/sync';
 import { Help } from './Help';
@@ -24,7 +24,8 @@ export function SyncSettings({
   const request = useRef<AbortController>();
   const dirty = JSON.stringify(value) !== JSON.stringify(saved);
   const patch = (next: Partial<Configuration>) => change({ ...value, ...next });
-  useEffect(() => {
+  // Cancel before a new click can test the updated form; a deferred effect can abort that new test.
+  useLayoutEffect(() => {
     request.current?.abort();
     setTesting(false);
     setNotice('');

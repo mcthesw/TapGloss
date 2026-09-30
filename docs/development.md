@@ -32,3 +32,13 @@ Firefox 实际浏览器测试：先执行 `pnpm run zip:firefox`，设置 `TAPGL
 `src/sync` 包含合并文档、分片交换、传输适配和调度服务。业务写入与待同步变更在同一个 IndexedDB 事务中提交；Anki 绑定单独存储。AWS SDK 的 pnpm 补丁仅取消 XML 解析器的浏览器重定向，以使用 SDK 自带的无 DOM 解析器，兼容扩展 Service Worker。
 
 产品设计见 [docs/design.md](design.md)，术语见 [CONTEXT.md](../CONTEXT.md)。
+
+## 发布
+
+release-please 根据 `main` 上的 Conventional Commits 维护版本 PR，更新 `package.json`、版本清单和 `CHANGELOG.md`。首版为 `0.3.0`；0.x 阶段功能更新增加 minor，修复增加 patch。合并版本 PR 后创建 `v` 前缀标签及 GitHub Release。
+
+工作流使用仓库的 `GITHUB_TOKEN`，需允许 GitHub Actions 创建 PR。由该令牌创建的 PR 和标签不会触发普通工作流，因此 release-please 直接调用检查和打包工作流，无需额外 PAT。版本 PR 不自动合并。
+
+发布包包括 Chrome ZIP、Firefox 未签名 ZIP、Firefox 审核源码 ZIP 和 `SHA256SUMS`。Firefox ZIP 需提交 Mozilla 签名后才能作为正式安装包；GitHub 发版不等于商店上架。审核源码包包含 lockfile 与 pnpm 补丁，按本文的 Node.js 24 构建步骤复现。
+
+既有标签可通过 Release 工作流的手动入口重新打包；打包前运行完整检查，并核对标签与包版本一致。

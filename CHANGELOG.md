@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.0](https://github.com/mcthesw/TapGloss/compare/v0.3.0...v0.4.0) (2026-09-30)
+
+
+### Features
+
+* add local backups and document privacy ([4cb9832](https://github.com/mcthesw/TapGloss/commit/4cb9832611c7977b956861df175d863b26b0ba2e))
+
+
+### Bug Fixes
+
+* keep connection tests after rapid settings edits ([b4711ec](https://github.com/mcthesw/TapGloss/commit/b4711ec6043f922068272f438df7458ac8a1af6a))
+
+
+### Performance Improvements
+
+* batch catalog repair when merging backups ([9b96769](https://github.com/mcthesw/TapGloss/commit/9b9676909587b083ba6be6f779093b8c34498079))
+
 ## [0.3.0](https://github.com/mcthesw/TapGloss/compare/v0.3.0...v0.3.0) (2026-09-30)
 
 

@@ -1,6 +1,6 @@
 import type { Database } from '../storage/database';
 import { queue } from '../storage/database';
-import { captureRow, entryRow } from '../storage/catalog';
+import { captureRow, entryRow, rebuildCatalog } from '../storage/catalog';
 import type { Capture, Entry } from '../domain/model';
 import { materialize, type SharedRecord } from './document';
 import { sharedTables } from '../storage/changes';
@@ -16,11 +16,16 @@ function same(before: Record<string, unknown> | undefined, after: object) {
 }
 
 // The caller owns the transaction. Bulk reads/writes avoid one IndexedDB round trip per record.
-export async function project(db: Database, rows: SharedRecord[]) {
+export async function project(
+  db: Database,
+  rows: SharedRecord[],
+  mode: 'sync' | 'restore' | 'initialRestore' = 'sync',
+) {
+  const initial = mode === 'initialRestore';
   const affected = new Set<string>();
   for (const name of sharedTables) {
     const selected = rows.filter((r) => r.table === name);
-    const previous = await db.table(name).bulkGet(selected.map((r) => r.value.id));
+    const previous = initial ? [] : await db.table(name).bulkGet(selected.map((r) => r.value.id));
     const values = selected.flatMap((row, i) => {
       const value = materialize(row),
         old = previous[i];
@@ -51,21 +56,35 @@ export async function project(db: Database, rows: SharedRecord[]) {
       const pending = captures.filter((c) => !c.deleted && !c.entryId);
       await db.catalog.bulkPut(pending.map(captureRow));
       const resolved = captures.filter((c) => c.deleted || c.entryId);
-      await db.catalog.bulkDelete(resolved.map((c) => `capture:${c.id}`));
-      await db.jobs.bulkDelete(resolved.map((c) => `generate:${c.id}`));
+      if (!initial) {
+        await db.catalog.bulkDelete(resolved.map((c) => `capture:${c.id}`));
+        await db.jobs.bulkDelete(resolved.map((c) => `generate:${c.id}`));
+      }
       for (const c of captures) if (c.entryId) affected.add(c.entryId);
     }
-    if (name === 'generations') {
+    if (name === 'generations' && !initial) {
       const entries = (
         await Promise.all(values.map((g) => db.entries.where('generationId').equals(g.id).toArray()))
       ).flat();
       for (const e of entries) affected.add(e.id);
     }
   }
-  await db.syncMeta.bulkPut([...affected].map((id) => ({ id: `repair:${id}`, value: '' })));
+  if (initial) {
+    // One durable marker replaces per-entry work during migration to an empty database.
+    await db.syncMeta.put({ id: 'backup:catalog', value: 'rebuild' });
+    return;
+  }
+  await db.syncMeta.bulkPut(
+    [...affected].map((id) => ({ id: `repair:${id}`, value: mode === 'sync' ? '' : 'backup' })),
+  );
 }
 
 export async function repairCatalog(db: Database) {
+  await db.transaction('rw', db.tables, async () => {
+    if (!(await db.syncMeta.get('backup:catalog'))) return;
+    await rebuildCatalog(db);
+    await db.syncMeta.delete('backup:catalog');
+  });
   while (true) {
     const batch = await db.syncMeta.where('id').startsWith('repair:').limit(250).toArray();
     if (!batch.length) return;
@@ -104,6 +123,7 @@ export async function repairCatalog(db: Database) {
           !e.deleted &&
           generations[i] &&
           bindings[i] &&
+          batch[i]?.value !== 'backup' &&
           (!job || (!job.blocked && job.leaseUntil > Date.now()))
         )
           await queue(db, 'export', e.id);

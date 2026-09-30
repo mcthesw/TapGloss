@@ -2,14 +2,14 @@ import { expect, it } from 'vitest';
 import { Builder, By, until } from 'selenium-webdriver';
 import { Options, type Driver } from 'selenium-webdriver/firefox';
 import { createServer } from 'node:http';
-import { mkdir, readFile, writeFile, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, mkdtemp, rm, readdir } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { startSyncServer } from './sync-servers';
 import { fakeServices } from './fixtures';
 
 it.skipIf(!process.env.TAPGLOSS_FIREFOX_TEST)(
-  'runs actual Firefox lookup, wordlist UI and two-device S3/WebDAV sync',
+  'runs actual Firefox lookup, wordlist UI, local backup and two-device S3/WebDAV sync',
   async () => {
     const services = fakeServices();
     const api = createServer(async (request, response) => {
@@ -42,10 +42,13 @@ it.skipIf(!process.env.TAPGLOSS_FIREFOX_TEST)(
     const button = (driver: Driver, text: string) =>
       driver.findElement(By.xpath(`//button[normalize-space()="${text}"]`));
     const field = (driver: Driver, label: string) =>
-      driver.findElement(
-        By.xpath(
-          `//label[normalize-space(text())="${label}"]/input | //input[@id=//label[normalize-space()="${label}"]/@for]`,
+      driver.wait(
+        until.elementLocated(
+          By.xpath(
+            `//label[normalize-space(text())="${label}"]/input | //input[@id=//label[normalize-space()="${label}"]/@for]`,
+          ),
         ),
+        10000,
       );
     const fill = async (driver: Driver, label: string, value: string) => {
       const input = await field(driver, label);
@@ -63,7 +66,11 @@ it.skipIf(!process.env.TAPGLOSS_FIREFOX_TEST)(
       for (let i = 0; i < 2; i++) {
         const options = new Options()
           .addArguments('-headless')
-          .setPreference('intl.accept_languages', 'en-US');
+          .setPreference('intl.accept_languages', 'en-US')
+          .setPreference('browser.download.folderList', 2)
+          .setPreference('browser.download.dir', directory)
+          .setPreference('browser.download.useDownloadDir', true)
+          .setPreference('browser.helperApps.neverAsk.saveToDisk', 'application/octet-stream');
         if (process.env.TAPGLOSS_FIREFOX_BINARY) options.setBinary(process.env.TAPGLOSS_FIREFOX_BINARY);
         const driver = (await new Builder()
           .forBrowser('firefox')
@@ -109,11 +116,37 @@ it.skipIf(!process.env.TAPGLOSS_FIREFOX_TEST)(
       await (await button(a, 'Wordlists')).click();
       const path = join(directory, 'Common.txt');
       await writeFile(path, 'rain\noutside');
-      await a.findElement(By.css('input[type=file]')).sendKeys(path);
+      await a
+        .wait(until.elementLocated(By.css('input[aria-label="Choose a wordlist file"]')), 10000)
+        .sendKeys(path);
       await a.wait(until.elementLocated(By.css('dialog[open]')), 10000);
       await a.findElement(By.xpath('//dialog//button[normalize-space()="Import"]')).click();
       await a.wait(until.elementLocated(By.xpath('//h2[normalize-space()="Common"]')), 10000);
       await writeFile('.output/firefox-review/wordlists.png', await a.takeScreenshot(), 'base64');
+      await (await button(a, 'Settings')).click();
+      await (await button(a, 'Export backup')).click();
+      const backup = await a.wait(async () => {
+        const files = await readdir(directory);
+        return files.find((file) => file.endsWith('.tapgloss') && !files.includes(file + '.part'));
+      }, 10000);
+      if (!backup) throw new Error('Backup download missing');
+      const beforeRestore = services.counts();
+      for (let i = 0; i < 2; i++) {
+        await b
+          .findElement(By.css('input[aria-label="Choose backup file"]'))
+          .sendKeys(join(directory, backup));
+        await b.wait(until.elementLocated(By.css('dialog[open]')), 10000);
+        await b.findElement(By.xpath('//dialog//button[normalize-space()="Restore"]')).click();
+        await b.wait(
+          until.elementLocated(By.xpath('//*[@role="status" and normalize-space()="Restore complete"]')),
+          10000,
+        );
+      }
+      expect(services.counts()).toEqual(beforeRestore);
+      await (await button(b, 'Records')).click();
+      await b.wait(until.elementLocated(By.xpath('//span[normalize-space()="reluctant"]')), 10000);
+      await (await button(b, 'Wordlists')).click();
+      await b.wait(until.elementLocated(By.xpath('//h2[normalize-space()="Common"]')), 10000);
       for (const backend of ['s3', 'webdav'] as const) {
         const server = await startSyncServer(backend);
         try {
@@ -161,6 +194,7 @@ it.skipIf(!process.env.TAPGLOSS_FIREFOX_TEST)(
             browser: (await a.getCapabilities()).get('browserVersion'),
             lookup: true,
             wordlistImport: true,
+            backupRestore: true,
             s3: true,
             webdav: true,
             duplicateNotes: 0,

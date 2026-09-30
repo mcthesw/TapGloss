@@ -86,7 +86,15 @@ export function AIConnection({
       <div class="settings-heading">
         <h2>{t('AI 连接')}</h2>
         <Help label={t('AI 连接帮助')}>
-          {t('支持 OpenAI 兼容接口。测试连接会生成一组例句，不保存记录或制卡。')}
+          {t('支持 OpenAI 兼容接口。测试连接会生成一组例句，不保存记录或制卡。')}{' '}
+          {t('查询内容会发送至你配置的 AI 服务。')}{' '}
+          <a
+            href="https://github.com/mcthesw/TapGloss/blob/main/docs/privacy.md"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t('隐私政策')}
+          </a>
         </Help>
       </div>
       <label>

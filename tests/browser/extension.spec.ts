@@ -585,3 +585,49 @@ test('spoiler reveal gestures never create a lookup; subsequent clicks on reveal
   }
   await page.close();
 });
+
+test('settings exports and restores a local backup without AI or Anki activity', async () => {
+  await options.getByRole('button', { name: /^(设置|Settings)$/ }).click();
+  if ((await options.locator('html').getAttribute('lang')) === 'en') {
+    await options.getByLabel('Interface language', { exact: true }).click();
+    await options.getByRole('option', { name: '中文', exact: true }).click();
+    await options.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(options.locator('html')).toHaveAttribute('lang', 'zh');
+  }
+  const downloadEvent = options.waitForEvent('download');
+  await options.getByRole('button', { name: 'AI 连接帮助', exact: true }).click();
+  const privacy = options.getByRole('link', { name: '隐私政策', exact: true });
+  await privacy.hover();
+  await expect(privacy).toBeVisible();
+  await expect(privacy).toHaveAttribute(
+    'href',
+    'https://github.com/mcthesw/TapGloss/blob/main/docs/privacy.md',
+  );
+  await options.keyboard.press('Escape');
+  await options.getByRole('button', { name: '导出备份', exact: true }).click();
+  const download = await downloadEvent;
+  expect(download.suggestedFilename()).toMatch(/^TapGloss-.*\.tapgloss$/);
+  await expect(options.getByRole('status').filter({ hasText: '备份已导出' })).toBeVisible();
+  const before = services.counts();
+  const path = (await download.path())!;
+  await options.getByLabel('选择备份文件').setInputFiles(path);
+  const dialog = options.getByRole('dialog', { name: '恢复备份' });
+  await expect(dialog).toContainText('份词表');
+  await options.screenshot({ path: 'test-results/backup-restore.png', fullPage: true });
+  await options.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  expect(services.counts()).toEqual(before);
+  await options.getByLabel('选择备份文件').setInputFiles(path);
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: '确认恢复' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(options.getByRole('status').filter({ hasText: '恢复完成' })).toBeVisible();
+  expect(services.counts()).toEqual(before);
+  await options.getByLabel('选择备份文件').setInputFiles({
+    name: 'broken.tapgloss',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from('bad'),
+  });
+  await expect(options.getByRole('alert')).toHaveText('备份文件无效、损坏或版本不兼容');
+  expect(services.counts()).toEqual(before);
+});

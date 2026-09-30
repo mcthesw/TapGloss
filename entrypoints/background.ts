@@ -119,6 +119,9 @@ export default defineBackground(() => {
       let change: Change | undefined;
       let runJobs = false;
       switch (request.type) {
+        case 'backupRestored':
+          change = { records: true, vocabulary: true, wordlists: true };
+          break;
         case 'lookup':
           if (!readingEnabled(await controls.read(), request.data.url)) throw new Error('阅读功能已暂停');
           data = await capture(db, request.data);

@@ -14,6 +14,7 @@ import { syncSettingsSchema, type SyncStatus } from './domain/sync';
 import { wordlistImport, wordlistMode, type Wordlist, type ReadingWord } from './domain/wordlists';
 
 export const requestSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('backupRestored') }),
   z.object({ type: z.literal('lookup'), data: sourceSchema }),
   z.object({ type: z.literal('read'), data: z.string().max(100) }),
   z.object({ type: z.literal('vocabulary'), data: z.array(z.string().max(200)).max(1000).default([]) }),
@@ -91,6 +92,7 @@ export const requestSchema = z.discriminatedUnion('type', [
 ]);
 export type Request = z.input<typeof requestSchema>;
 type Results = {
+  backupRestored: void;
   lookup: string;
   read: RecordView | undefined;
   vocabulary: Vocabulary[];

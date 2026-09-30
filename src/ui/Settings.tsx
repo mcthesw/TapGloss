@@ -1,3 +1,4 @@
+import { Backup } from './Backup';
 import { DisabledSites } from './DisabledSites';
 import { useI18n } from './i18n';
 import { createPortal } from 'preact/compat';
@@ -113,6 +114,7 @@ export function Settings({
       <div class="settings-columns">
         <div class="settings-column">
           <AIConnection value={value} change={change} active={active} />
+          <Backup />
           <SyncSettings
             value={value.sync}
             saved={initial.sync}

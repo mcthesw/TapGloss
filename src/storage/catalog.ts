@@ -47,6 +47,29 @@ export async function updateCatalog(db: Database, id: string) {
   await db.catalog.put(entryRow(e, g, sources));
 }
 
+// Restore into an empty database needs one linear rebuild, with no per-entry queries or jobs.
+// The caller owns the transaction; a durable marker makes interrupted restores repairable.
+export async function rebuildCatalog(db: Database) {
+  const [entries, generations, captures] = await Promise.all([
+    db.entries.toArray(),
+    db.generations.toArray(),
+    db.captures.toArray(),
+  ]);
+  const materials = new Map(generations.map((g) => [g.id, g]));
+  const sources = new Map<string, Capture[]>();
+  for (const c of captures) {
+    if (c.deleted || !c.entryId) continue;
+    if (!sources.has(c.entryId)) sources.set(c.entryId, []);
+    sources.get(c.entryId)!.push(c);
+  }
+  const rows = entries.flatMap((e) => {
+    const g = materials.get(e.generationId);
+    return !e.deleted && g ? [entryRow(e, g, sources.get(e.id) ?? [])] : [];
+  });
+  await db.catalog.where('id').startsWith('entry:').delete();
+  await db.catalog.bulkPut(rows);
+}
+
 // Upgrade once, in bounded batches. Existing records and note identities stay intact.
 export async function buildCatalog(tx: Transaction) {
   const captures = tx.table<Capture>('captures'),

@@ -1,4 +1,23 @@
 export const english: Record<string, string> = {
+  备份: 'Backup',
+  备份帮助: 'Backup help',
+  导出备份: 'Export backup',
+  恢复备份: 'Restore backup',
+  选择备份文件: 'Choose backup file',
+  备份已导出: 'Backup exported',
+  '正在处理…': 'Processing…',
+  恢复完成: 'Restore complete',
+  确认恢复: 'Restore',
+  '{0} 条记录 · {1} 份词表': '{0} records · {1} wordlists',
+  '合并到现有数据，保留已有记录。': 'Merge with your current data and keep existing records.',
+  '保存学习记录、词表和 Anki 关联，不含密钥、连接设置或 Anki 复习历史。恢复会合并到现有数据，不直接调用 AI 或 Anki。':
+    'Save learning records, wordlists and Anki links. Keys, connection settings and Anki review history are excluded. Restore merges locally without calling AI or Anki.',
+  '备份文件无效、损坏或版本不兼容': 'The backup is invalid, corrupted or uses an unsupported version.',
+  备份元数据过大: 'Backup metadata is too large.',
+  '从备份恢复，请手动重试': 'Restored from backup. Retry manually to continue.',
+  隐私政策: 'Privacy policy',
+  '查询内容会发送至你配置的 AI 服务。': 'Lookup content is sent to your configured AI service.',
+
   移动浮窗: 'Move popup',
   拖动以移动: 'Drag to move',
   新卡显示首字母提示: 'Show first-letter hints on new cards',

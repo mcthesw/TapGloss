@@ -15,7 +15,15 @@ export function Modal({
     dialog.current?.showModal();
   }, []);
   return (
-    <dialog ref={dialog} class="paper modal space-y-5" aria-labelledby={title} onCancel={close}>
+    <dialog
+      ref={dialog}
+      class="paper modal space-y-5"
+      aria-labelledby={title}
+      onCancel={(event) => {
+        event.preventDefault();
+        close();
+      }}
+    >
       {children}
     </dialog>
   );

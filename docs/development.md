@@ -23,9 +23,11 @@ pnpm run test:e2e
 
 `node scripts/benchmark-wordlists.mjs 100000` 验证词表预览、导入和按页面词语查询的开销，使用独立 Chromium 配置，结果与截图写入 `.output/wordlist-performance/`。
 
-`node scripts/benchmark-backup.mjs 100000` 验证本地备份的导出、检查、空库恢复与重复恢复，结果写入 `.output/backup-performance/`。已有合成备份可作为第三个参数直接复测；追加 `--cold-export` 会在隔离库中重建全部待同步变更，单独测量未同步过的大库首次导出。数据准备时间不计入导出耗时。
+`node scripts/benchmark-backup.mjs 100000` 验证本地备份的导出、检查、空库恢复与重复恢复，结果写入 `.output/backup-performance/`。已有合成备份可作为第三个参数直接复测；追加 `--cold-export` 会在隔离库中重建全部待同步变更，单独测量未同步过的大库首次导出。追加 `--merge` 会保留一条已有记录，验证非空库合并，报告为 `merge-result.json`。数据准备时间不计入导出耗时。
 
 2026-10-01 本机 Chromium 的十万条合成记录测试：备份 128.3 MiB，包含 40 万条待同步变更时首次导出约 39 秒，无新变更时导出约 1.7 秒，文件检查约 4.7 秒，空库恢复约 71 秒，重复恢复约 11 秒（包含文件检查）。学习记录、来源、词汇及 Anki 关联的数量一致，无自动 AI 或 Anki 请求；时间受设备与数据量影响。
+
+同一备份合并到已有一条记录的库约 69 秒，结果为 100,001 条，原记录与 Anki 关联保留；重复合并约 14 秒，无任务或服务请求。
 
 Firefox 实际浏览器测试：先执行 `pnpm run zip:firefox`，设置 `TAPGLOSS_FIREFOX_TEST=1` 后执行 `pnpm exec vitest run tests/firefox.test.ts`。可以通过 `TAPGLOSS_FIREFOX_BINARY` 指定 Firefox 路径。Selenium 会管理测试驱动，创建独立临时配置并临时安装扩展；测试通过实际控件验证查词、词表导入、备份恢复与两种后端同步，不使用日常浏览器配置。
 

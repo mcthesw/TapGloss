@@ -47,7 +47,7 @@ export async function updateCatalog(db: Database, id: string) {
   await db.catalog.put(entryRow(e, g, sources));
 }
 
-// Restore into an empty database needs one linear rebuild, with no per-entry queries or jobs.
+// Backup restore needs one linear rebuild, with no per-entry queries or new jobs.
 // The caller owns the transaction; a durable marker makes interrupted restores repairable.
 export async function rebuildCatalog(db: Database) {
   const [entries, generations, captures] = await Promise.all([
@@ -66,8 +66,18 @@ export async function rebuildCatalog(db: Database) {
     const g = materials.get(e.generationId);
     return !e.deleted && g ? [entryRow(e, g, sources.get(e.id) ?? [])] : [];
   });
-  await db.catalog.where('id').startsWith('entry:').delete();
-  await db.catalog.bulkPut(rows);
+  await db.catalog.clear();
+  await db.catalog.bulkPut([...rows, ...captures.filter((c) => !c.deleted && !c.entryId).map(captureRow)]);
+  const captureById = new Map(captures.map((c) => [c.id, c]));
+  const entryById = new Map(entries.map((e) => [e.id, e]));
+  const obsolete = (await db.jobs.toArray()).filter((job) => {
+    const c = captureById.get(job.ref);
+    return (
+      (job.kind === 'generate' && c && (c.deleted || c.entryId)) ||
+      (job.kind === 'export' && entryById.get(job.ref)?.deleted)
+    );
+  });
+  await db.jobs.bulkDelete(obsolete.map((job) => job.id));
 }
 
 // Upgrade once, in bounded batches. Existing records and note identities stay intact.

@@ -150,6 +150,25 @@ if (!existingPath) {
 
 const second = await openProfile();
 try {
+  const expected = count + (process.argv.includes('--merge') ? 1 : 0);
+  if (expected > count) {
+    await second.worker.evaluate(async (item) => {
+      const db = await new Promise((r, j) => {
+        const req = indexedDB.open('TapGloss');
+        req.onsuccess = () => r(req.result);
+        req.onerror = () => j(req.error);
+      });
+      await new Promise((r, j) => {
+        const tx = db.transaction([...Object.keys(item.rows), 'syncChanges'], 'readwrite');
+        for (const [name, row] of Object.entries(item.rows)) tx.objectStore(name).put(row);
+        for (const change of item.changes) tx.objectStore('syncChanges').put(change);
+        tx.oncomplete = r;
+        tx.onerror = () => j(tx.error);
+        tx.onabort = () => j(tx.error);
+      });
+      db.close();
+    }, rowSet(count));
+  }
   const started = performance.now();
   await second.page.getByLabel('选择备份文件').setInputFiles(path);
   const dialog = second.page.getByRole('dialog', { name: '恢复备份' });
@@ -218,7 +237,7 @@ try {
       });
       db.close();
     });
-    console.log(`Prepared ${count * 4} pending changes for cold export`);
+    console.log(`Prepared ${expected * 4} pending changes for cold export`);
     const coldStart = performance.now();
     const coldDownload = second.page.waitForEvent('download', { timeout: 600000 });
     await second.page.getByRole('button', { name: '导出备份', exact: true }).click();
@@ -256,7 +275,7 @@ try {
   });
   if (
     ['captures', 'entries', 'generations', 'vocabulary', 'catalog', 'ankiBindings'].some(
-      (name) => counts[name] !== count,
+      (name) => counts[name] !== expected,
     ) ||
     counts.jobs !== 0 ||
     counts.syncChanges !== 0 ||
@@ -265,6 +284,7 @@ try {
     throw new Error(JSON.stringify({ counts, requests }));
   const report = {
     count,
+    existingRecords: expected - count,
     bytes: (await stat(path)).size,
     exportMs,
     inspectMs,
@@ -276,7 +296,10 @@ try {
     serviceRequests: requests,
   };
   await second.page.screenshot({ path: resolve(output, 'restored.png'), fullPage: true });
-  await writeFile(resolve(output, 'result.json'), JSON.stringify(report, null, 2));
+  await writeFile(
+    resolve(output, expected > count ? 'merge-result.json' : 'result.json'),
+    JSON.stringify(report, null, 2),
+  );
   console.log(JSON.stringify(report, null, 2));
 } finally {
   await second.context.close();

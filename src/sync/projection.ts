@@ -54,29 +54,27 @@ export async function project(
     if (name === 'captures') {
       const captures = values as Capture[];
       const pending = captures.filter((c) => !c.deleted && !c.entryId);
-      await db.catalog.bulkPut(pending.map(captureRow));
+      if (mode === 'sync') await db.catalog.bulkPut(pending.map(captureRow));
       const resolved = captures.filter((c) => c.deleted || c.entryId);
-      if (!initial) {
+      if (mode === 'sync') {
         await db.catalog.bulkDelete(resolved.map((c) => `capture:${c.id}`));
         await db.jobs.bulkDelete(resolved.map((c) => `generate:${c.id}`));
       }
       for (const c of captures) if (c.entryId) affected.add(c.entryId);
     }
-    if (name === 'generations' && !initial) {
+    if (name === 'generations' && mode === 'sync') {
       const entries = (
         await Promise.all(values.map((g) => db.entries.where('generationId').equals(g.id).toArray()))
       ).flat();
       for (const e of entries) affected.add(e.id);
     }
   }
-  if (initial) {
-    // One durable marker replaces per-entry work during migration to an empty database.
+  if (mode !== 'sync') {
+    // Restore repairs the complete local index once, including merges into existing data.
     await db.syncMeta.put({ id: 'backup:catalog', value: 'rebuild' });
     return;
   }
-  await db.syncMeta.bulkPut(
-    [...affected].map((id) => ({ id: `repair:${id}`, value: mode === 'sync' ? '' : 'backup' })),
-  );
+  await db.syncMeta.bulkPut([...affected].map((id) => ({ id: `repair:${id}`, value: '' })));
 }
 
 export async function repairCatalog(db: Database) {

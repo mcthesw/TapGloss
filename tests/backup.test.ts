@@ -199,3 +199,27 @@ it('applies deletion-only Yjs updates even when the state vector is unchanged', 
     await db.delete();
   }
 });
+
+it('merges new records alongside existing pending work without requeueing it', async () => {
+  const from = new Database(crypto.randomUUID()),
+    to = new Database(crypto.randomUUID());
+  const original = globalThis.fetch;
+  globalThis.fetch = fakeServices().fetcher as typeof fetch;
+  try {
+    const local = await capture(to, { ...source, url: 'https://example.org/local' });
+    const job = await to.jobs.get(`generate:${local}`);
+    await capture(from, source);
+    await new Worker(from, async () => settings).run();
+    await restoreBackup(to, await inspectBackup(await exportBackup(from)));
+    expect(await to.entries.count()).toBe(1);
+    expect(await to.captures.count()).toBe(2);
+    expect(await to.catalog.count()).toBe(2);
+    expect(await to.jobs.toArray()).toEqual([job]);
+    expect((await to.catalog.get(`capture:${local}`))?.term).toBe('reluctant');
+    expect(await to.syncMeta.get('backup:catalog')).toBeUndefined();
+  } finally {
+    globalThis.fetch = original;
+    await from.delete();
+    await to.delete();
+  }
+});

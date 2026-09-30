@@ -32,3 +32,7 @@ pnpm run build
 ## 文档
 
 [使用说明](docs/usage.md) · [开发](docs/development.md) · [设计](docs/design.md) · [术语](CONTEXT.md)
+
+## 许可证
+
+项目使用 [MIT](LICENSE) 许可证。内置词表数据的来源与许可见 [词表说明](resources/wordlists/README.md)。
